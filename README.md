@@ -7,6 +7,6 @@ Aktuelle Projektziele:
 --> Die Informationsflut soll verringert werden, indem Kunden die relevanten Informationen in Form von Zusammenfassungen gesendet werden.
 
 Team:
-Korbinian Kolb
-Phoenix Lußky
+Korbinian Kolb,
+Phoenix Lußky,
 Sebastian Wolf
