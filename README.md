@@ -1,6 +1,6 @@
 # RSS-Mail-Summarizer
 
-Projektziele:
+Aktuelle Projektziele:
 1. Zusammenfassung von RSS-Blogs generieren und als Mail darstellen
 2. Lieferstatus und Trackingnummern von Paketen extrahieren und als Mail darstellen
 
