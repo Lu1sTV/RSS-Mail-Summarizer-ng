@@ -1,6 +1,12 @@
+import time
+
 import requests
 from bs4 import BeautifulSoup
 from trafilatura import fetch_url, extract
+
+from llm_calls import summarise_website
+from change_trafilatura import change_download_timeout
+
 
 rss_url = "https://mstdn.social/@pinboard_pop.rss"
 
@@ -33,6 +39,7 @@ def download_webpages(links):
         webpage = fetch_url(link)
         if webpage is None:
             print(f"Request for {link} timed out")
+            continue
         webpages[link] = webpage
 
     return webpages
@@ -55,14 +62,17 @@ def extract_text(webpages):
 
 links = extract_links_from_rss(rss_url)
 
+change_download_timeout(10)
 webpages = download_webpages(links)
 
 extracted_text, extracted_metadata = extract_text(webpages)
 
 for link, text in extracted_text.items():
     print(link)
-    print(text)
-    print("---------------------------------")
+    # print(text)
+    summarise_website(text)
+    time.sleep(10)  # needed because of Googles free API Key limit
+
 
 
 
