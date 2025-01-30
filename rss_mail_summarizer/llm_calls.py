@@ -2,9 +2,17 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 import os
+from langchain_core.rate_limiters import InMemoryRateLimiter
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+
+
+rate_limiter = InMemoryRateLimiter(
+    requests_per_second=0.2,  # Can only make a request once every 10 seconds!!
+    check_every_n_seconds=0.1,  # Wake up every 100 ms to check whether allowed to make a request,
+    max_bucket_size=1,  # Controls the maximum burst size.
+)
 
 
 llm = ChatGoogleGenerativeAI(
@@ -14,6 +22,7 @@ llm = ChatGoogleGenerativeAI(
     max_tokens=None,
     timeout=None,
     max_retries=2,
+    rate_limiter=rate_limiter
 )
 
 

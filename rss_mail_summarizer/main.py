@@ -18,4 +18,3 @@ for link, text in extracted_text.items():
     # print(text)
     categorize_website(text)
     summarise_website(text)
-    time.sleep(10)  # needed because of Googles free API Key limit
