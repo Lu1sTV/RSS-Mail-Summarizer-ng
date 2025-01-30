@@ -8,7 +8,6 @@ rss_url = "https://mstdn.social/@pinboard_pop.rss"
 
 
 links = extract_links_from_rss(rss_url)
-
 change_download_timeout(10)
 webpages = download_webpages(links)
 

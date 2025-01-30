@@ -1,6 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
-from trafilatura import fetch_url, extract
+from trafilatura import fetch_url, extract, fetch_response
 
 
 def extract_links_from_rss(rss_url):
@@ -28,8 +28,8 @@ def extract_links_from_rss(rss_url):
 def download_webpages(links):
     webpages = {}
     for link in links:
-        webpage = fetch_url(link)
-        if webpage is None:
+        webpage = fetch_response(link)
+        if webpage is None:     # if the request times out it returns "None"
             print(f"Request for {link} timed out")
             continue
         webpages[link] = webpage
@@ -41,7 +41,7 @@ def extract_text(webpages):
     extracted_text = {}
     extracted_metadata = {}
     for link, webpage in webpages.items():
-        text = extract(webpage, include_tables=False, include_comments=False, favor_recall=True, with_metadata=True)
+        text = extract(webpage, include_tables=False, include_comments=False, favor_recall=True, with_metadata=False)
         if text:
             extracted_text[link] = text
         else:
