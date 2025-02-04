@@ -10,3 +10,7 @@ Team:
 Korbinian Kolb,
 Phoenix Lußky,
 Sebastian Wolf
+
+## Hinweise zum Verwenden:
+Nach ziehen des Repos im Ordner rss_mail_summarizer ein .env File erstellen und einen API Schlüssel hinterlegen
+GEMINI_API_KEY=
