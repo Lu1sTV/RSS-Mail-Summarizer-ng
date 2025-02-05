@@ -13,7 +13,7 @@ def add_datarecord(url, html_text, category, summary):
     timestamp = datetime.now()
     c.execute(f"INSERT INTO website (url, html, category, was_summarized, summary, timestamp) VALUES (?, ?, ?, 0, ?, ?)", (url, html_text, category, summary, timestamp))
     conn.commit()
-    #print(f"Datarecord:  {url},   {category}")
+    print(f"Datarecord {url} added to database")
 
 
 #SO GEHT EIN SELECT, FALLS DAS BENÖTIGT WIRD:

@@ -4,6 +4,7 @@ from utils.change_trafilatura import change_download_timeout
 from llm_calls import summarise_website, categorize_website
 from send_mail import send_mail
 from dotenv import load_dotenv
+from database import add_datarecord
 
 
 load_dotenv()
@@ -15,7 +16,6 @@ short_term_cache = "cache_files/short_term_cache.txt"
 links = extract_links_from_rss(rss_url)
 change_download_timeout(10)
 webpages = download_webpages(links)
-
 extracted_text, extracted_metadata = extract_text(webpages)
 
 # delete short term cache before every run to make sure an empty file is created
@@ -35,9 +35,9 @@ with open(short_term_cache, "a") as file:
         summary = summarise_website(text)
         print("Summary: " + summary)
         file.write("Summary: " + summary + "\n\n")
-        print("--------------------------")
 
         add_datarecord(link, text, category, summary)
+        print("--------------------------")
 
 # append short term cache to long term cache
 # Duplikatserkennung muss noch ergänzt werden
