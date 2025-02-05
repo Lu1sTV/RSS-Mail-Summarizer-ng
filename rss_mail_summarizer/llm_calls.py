@@ -33,7 +33,12 @@ def summarise_website(html_text):
         [
             (
                 "system",
-                "You are an  assistant that summarises html websites in about 3 sentences using text the user provides.",
+                """
+                You are an  assistant that summarises html websites in about 3 sentences using text the user provides.
+                If the user does not provide website text, return only the following sentence:
+                
+                "No text provided!"
+                """
             ),
             ("human", "{input}"),
         ]
@@ -46,8 +51,7 @@ def summarise_website(html_text):
         }
     ).content
 
-    print(response)
-    print("---------------------------------------")
+    return response
 
 
 def categorize_website(html_text):
@@ -66,7 +70,7 @@ def categorize_website(html_text):
                 - "Entertainment and Lifestyle"
                 - "Travel and Tourism"
                 
-                If a website does not fit into one of these categories then categorize it as "Uncategorized"
+                If a website does not fit into one of these categories then return only a single word: "Uncategorized"
                 """,
             ),
             ("human", "{input}"),
@@ -80,7 +84,7 @@ def categorize_website(html_text):
         }
     ).content
 
-    print("Category: " + response)
+    return response
 
 
 
