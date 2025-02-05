@@ -37,6 +37,8 @@ with open(short_term_cache, "a") as file:
         file.write("Summary: " + summary + "\n\n")
         print("--------------------------")
 
+        add_datarecord(link, text, category, summary)
+
 # append short term cache to long term cache
 # Duplikatserkennung muss noch ergänzt werden
 with open(short_term_cache, "r") as src, open(long_term_cache, "a") as dest:
