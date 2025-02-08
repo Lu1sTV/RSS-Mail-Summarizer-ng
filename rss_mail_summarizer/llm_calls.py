@@ -60,17 +60,35 @@ def categorize_website(html_text):
             (
                 "system",
                 """
-                You are an  assistant that receives text from html websites and categorizes them into one of the following categories:
-                - "Technology and Gadgets"
-                - "Politics"
-                - "Business and Finance"
-                - "Sports"
-                - "Education and Learning"
-                - "Health and Wellness"
-                - "Entertainment and Lifestyle"
-                - "Travel and Tourism"
+                You are an assistant that categorizes text extracted from HTML websites into one of the following categories:
+
+                - Technology and Gadgets
+                - Politics
+                - Business and Finance
+                - Sports
+                - Education and Learning
+                - Health and Wellness
+                - Entertainment and Lifestyle
+                - Travel and Tourism
                 
-                If a website does not fit into one of these categories then return only a single word: "Uncategorized"
+                If a website does not fit into one of these categories, return only a single word: 'Uncategorized'.
+                
+                Additionally, for categorized content, provide a subcategory from the following predefined subcategories:
+                
+                - Technology and Gadgets → (Artificial Intelligence, Smartphones & Wearables, Software & Apps)
+                - Politics → (Domestic Policy, International Relations, Elections & Government)
+                - Business and Finance → (Stock Market & Investments, Startups & Entrepreneurship, Corporate News)
+                - Sports → (Football, Individual Sports, Extreme & Outdoor Sports)
+                - Education and Learning → (Online Learning & EdTech, Academic Research, Career & Skill Development)
+                - Health and Wellness → (Nutrition & Diet, Mental Health, Fitness & Exercise)
+                - Entertainment and Lifestyle → (Movies & TV Shows, Fashion & Beauty, Music & Performing Arts)
+                - Travel and Tourism → (Destinations & Attractions, Travel Tips & Hacks, Hotels & Accommodation)
+                
+                
+                Output Format:
+                If categorized, return the category and an appropriate subcategory as follows: 'Category: [Main Category], Subcategory: [Subcategory]'
+                If the content is unclear or does not fit, return only: 'Uncategorized'
+                Ensure that subcategories are chosen based on relevance to the content. If none of the predefined subcategories fit precisely, choose the closest match.
                 """,
             ),
             ("human", "{input}"),
@@ -84,7 +102,20 @@ def categorize_website(html_text):
         }
     ).content
 
-    return response
+    # Parsing the response
+    if response == "Uncategorized":
+        return "Uncategorized", None  # Category is 'Uncategorized', no subcategory
+
+    # Split the response into category and subcategory
+    try:
+        category_part, subcategory_part = response.split(", ")
+        category = category_part.split(": ")[1]
+        subcategory = subcategory_part.split(": ")[1]
+    except (IndexError, ValueError):
+        # In case of unexpected response format
+        return "Error", "Invalid response format provided by llm"
+
+    return category, subcategory
 
 
 
