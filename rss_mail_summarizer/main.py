@@ -1,10 +1,10 @@
 import os
 from utils.extract_html_content import extract_links_from_rss, download_webpages, extract_text
 from utils.change_trafilatura import change_download_timeout
-from llm_calls import summarise_website, categorize_website
+from llm_calls import summarise_website, categorize_website, get_subcategories
 from send_mail import send_mail, create_mail_body
 from dotenv import load_dotenv
-from database import add_datarecord, is_duplicate_url 
+from database import add_datarecord, is_duplicate_url, get_summaries_by_category, update_subcategories_in_db
 
 
 
@@ -25,16 +25,29 @@ for link, text in extracted_text.items():
 
     print(link)
 
-    category, subcategory = categorize_website(text)
+    category = categorize_website(text)
     print("Category: " + category)
-    if category != "Uncategorized":
-        print("Subcategory: " + subcategory)
 
     summary = summarise_website(text)
     print("Summary: " + summary)
 
-    add_datarecord(url=link, html_text=text, category=category, subcategory=subcategory, summary=summary)
+    add_datarecord(url=link, html_text=text, category=category, summary=summary)
     print("--------------------------")
+
+
+# dictionary with category as key and list of dictionaries as values
+# list of dictionaries has subcategories as keys and urls as values
+subcategories_for_each_category = {}
+
+summaries_by_category = get_summaries_by_category()
+if summaries_by_category is not {}:
+    for category, list_of_summaries in summaries_by_category.values():
+        subcategories = get_subcategories(list_of_summaries)
+        if subcategories is not None:
+            subcategories_for_each_category[category] = subcategories
+
+# Update the database with the assigned subcategories
+update_subcategories_in_db(subcategories_for_each_category)
 
 
 # send email

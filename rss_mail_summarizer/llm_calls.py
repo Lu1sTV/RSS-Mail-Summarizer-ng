@@ -71,24 +71,7 @@ def categorize_website(html_text):
                 - Entertainment and Lifestyle
                 - Travel and Tourism
                 
-                If a website does not fit into one of these categories, return only a single word: 'Uncategorized'.
-                
-                Additionally, for categorized content, provide a subcategory from the following predefined subcategories:
-                
-                - Technology and Gadgets → (Artificial Intelligence, Smartphones & Wearables, Software & Apps)
-                - Politics → (Domestic Policy, International Relations, Elections & Government)
-                - Business and Finance → (Stock Market & Investments, Startups & Entrepreneurship, Corporate News)
-                - Sports → (Football, Individual Sports, Extreme & Outdoor Sports)
-                - Education and Learning → (Online Learning & EdTech, Academic Research, Career & Skill Development)
-                - Health and Wellness → (Nutrition & Diet, Mental Health, Fitness & Exercise)
-                - Entertainment and Lifestyle → (Movies & TV Shows, Fashion & Beauty, Music & Performing Arts)
-                - Travel and Tourism → (Destinations & Attractions, Travel Tips & Hacks, Hotels & Accommodation)
-                
-                
-                Output Format:
-                If categorized, return the category and an appropriate subcategory as follows: 'Category: [Main Category], Subcategory: [Subcategory]'
-                If the content is unclear or does not fit, return only: 'Uncategorized'
-                Ensure that subcategories are chosen based on relevance to the content. If none of the predefined subcategories fit precisely, choose the closest match.
+                If a website does not fit into one of these categories, return only a single word: 'Uncategorized'.                
                 """,
             ),
             ("human", "{input}"),
@@ -116,6 +99,95 @@ def categorize_website(html_text):
         return "Error", "Invalid response format provided by llm"
 
     return category, subcategory
+
+
+def get_subcategories(category_summaries):
+    """
+    This function processes a list of summaries for a single category and identifies subcategories
+    within the summaries that share a common theme. Each subcategory must have at least four summaries
+    with a similar topic. The function returns a dictionary where each key is a subcategory and each value
+    is a list of URLs associated with that subcategory.
+
+    Input:
+    - category_summaries (list): A list of dictionaries, each containing:
+        - "summary" (str): A string representing the summary of an article.
+        - "url" (str): A string representing the URL associated with the summary.
+
+    Example Input:
+    [
+        {"summary": "AI is improving customer service through chatbots.", "url": "http://example.com/tech1"},
+        {"summary": "AI algorithms are optimizing supply chain management.", "url": "http://example.com/tech2"},
+        {"summary": "AI in healthcare is revolutionizing diagnostic tools.", "url": "http://example.com/tech3"},
+        {"summary": "AI-driven personalized learning is the future of education.", "url": "http://example.com/tech4"}
+    ]
+
+    Output:
+    - Returns a dictionary where each key is a subcategory name, and each value is a list of URLs associated
+      with that subcategory. If no suitable subcategories are identified, the function returns None.
+
+    Example Output:
+    {
+        "AI Applications": [
+            "http://example.com/tech1",
+            "http://example.com/tech2",
+            "http://example.com/tech3",
+            "http://example.com/tech4"
+        ]
+    }
+
+    The function uses a language model to analyze the summaries and determine appropriate subcategories.
+    """
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
+                You are an expert in categorizing content. Given a list of summaries, your task is to identify subgroups within the summaries that share a common theme. Each subgroup should have at least four summaries with a similar topic. For each identified subgroup, generate a suitable subcategory that represents the common theme and return all subcategories formatted as a python dictionary with the subcategory as the key and the URLs as the values.
+
+                If there are no subgroups with at least four summaries sharing a common theme, return only the word "none". Only return subcategories for subgroups that clearly share a similar topic.
+
+                Example 1:
+                Summaries:
+                - "AI is improving customer service through chatbots."
+                - "AI algorithms are optimizing supply chain management."
+                - "AI in healthcare is revolutionizing diagnostic tools."
+                - "AI-driven personalized learning is the future of education."
+                - "The impact of climate change on polar regions is severe."
+                - "New fashion trends are focusing on sustainability."
+
+                Subcategories:
+                {"AI Applications": ["url1", "url2", "url3", "url4"]}
+
+                Example 2:
+                Summaries:
+                - "The latest smartphone releases have advanced cameras."
+                - "Climate change is affecting polar regions significantly."
+                - "Sustainable fashion is trending this season."
+                - "New advancements in mobile photography are exciting."
+                - "Scientists study climate change impacts on ecosystems."
+                - "Eco-friendly materials are popular in fashion."
+
+                Subcategories:
+                - "none"
+                """
+            ),
+            ("human", "Summaries: {input}"),
+        ]
+    )
+
+    # Prepare the input for the prompt
+    input_summaries = [f"{item['summary']} (URL: {item['url']})" for item in category_summaries]
+
+    chain = prompt | llm
+    response = chain.invoke(
+        {
+            "input": "\n- ".join(input_summaries),  # Format the summaries as a list
+        }
+    ).content
+
+    # Return None if the response is "none"
+    return None if response.strip().lower() == "none" else response
+
 
 
 

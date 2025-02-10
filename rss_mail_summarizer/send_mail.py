@@ -96,3 +96,42 @@ def create_mail_body(file_name="mail_body.md"):
         print("No unsent entries found.")
 
 
+
+def create_markdown_report(summaries_by_category, subcategories_for_each_category):
+    """
+    Erstellt eine Markdown-Datei mit allen Artikeln, geordnet nach Kategorien und Subkategorien.
+
+    Input:
+    - summaries_by_category (dict): Ein Dictionary, in dem jede Kategorie eine Liste von Artikeln enthält.
+    - subcategories_for_each_category (dict): Ein Dictionary, in dem jede Kategorie ein Dictionary von Subkategorien enthält.
+
+    Output:
+    - Erstellt eine Markdown-Datei mit dem Namen "news_report.md".
+    """
+    with open("news_report.md", "w") as file:
+        # Überschrift
+        file.write("# News of the Day\n\n")
+
+        for category, articles in summaries_by_category.items():
+            # Kategorie-Überschrift
+            file.write(f"## {category}\n\n")
+
+            # Überprüfen, ob es Subkategorien gibt
+            if category in subcategories_for_each_category:
+                subcategories = subcategories_for_each_category[category]
+
+                for subcategory, urls in subcategories.items():
+                    # Subkategorie-Überschrift
+                    file.write(f"### {subcategory}\n\n")
+
+                    for article in articles:
+                        if article['url'] in urls:
+                            # Artikel-Zusammenfassung und Link
+                            file.write(f"- {article['summary']} [(click here)]({article['url']})\n")
+            else:
+                for article in articles:
+                    # Artikel-Zusammenfassung und Link
+                    file.write(f"- {article['summary']} [(click here)]({article['url']})\n")
+
+            file.write("\n")
+

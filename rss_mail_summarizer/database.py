@@ -20,7 +20,7 @@ c.execute("""CREATE TABLE IF NOT EXISTS website (
 conn.commit()
 
 
-def add_datarecord(url, html_text, category, subcategory, summary, mail_sent=False):
+def add_datarecord(url, html_text, category, summary,subcategory=None, mail_sent=False):
     conn = sqlite3.connect('RSS_feed.db')
     c = conn.cursor()
 
@@ -50,7 +50,7 @@ def get_unsent_entries():
     c = conn.cursor()
 
     # Alle Einträge mit mail_sent == 0 abfragen
-    c.execute("SELECT url, category, subcategory, summary FROM website WHERE mail_sent = 0")
+    c.execute("SELECT url, category, summary, subcategory FROM website WHERE mail_sent = 0")
     entries = c.fetchall()
 
     conn.close()
@@ -97,13 +97,80 @@ def reset_last_20_entries():
     conn.close()
 
 
+def get_summaries_by_category():
+    conn = sqlite3.connect("RSS_feed.db")
+    cursor = conn.cursor()
+
+    # Select categories with at least 4 unsent emails
+    cursor.execute("""
+        SELECT category
+        FROM website
+        WHERE mail_sent = 0
+        GROUP BY category
+        HAVING COUNT(*) >= 4
+    """)
+
+    categories = cursor.fetchall()
+
+    summaries_by_category = {}
+
+    # For each category, retrieve summaries and URLs
+    for (category,) in categories:
+        cursor.execute("""
+            SELECT summary, url
+            FROM website
+            WHERE category = ? AND mail_sent = 0
+        """, (category,))
+
+        # Retrieve summaries and URLs for the current category
+        summaries = cursor.fetchall()
+        summaries_by_category[category] = [{"summary": summary, "url": url} for summary, url in summaries]
+
+    conn.close()
+
+    return summaries_by_category
 
 
-#SO GEHT EIN SELECT, FALLS DAS BENÖTIGT WIRD:
-#c.execute("SELECT * FROM website WHERE was_summarized = 0")
-#c.fetchone()
-#c.fetchmany(2)
-#print(c.fetchall())
 
+def update_subcategories_in_db(subcategories_for_each_category):
+    """
+    Update the SQLite database with the assigned subcategories for each URL.
 
-#conn.commit()
+    Input:
+    - subcategories_for_each_category (dict): A dictionary where each key is a category,
+      and each value is a dictionary with subcategories as keys and lists of URLs as values.
+
+    Example Input:
+    {
+        "Technology": {
+            "AI Applications": [
+                "http://example.com/tech1",
+                "http://example.com/tech2",
+                "http://example.com/tech3",
+                "http://example.com/tech4"
+            ]
+        },
+        "Science": {
+            "Climate Change": [
+                "http://example.com/science1",
+                "http://example.com/science2"
+            ]
+        }
+    }
+    """
+    conn = sqlite3.connect("RSS_feed.db")
+    cursor = conn.cursor()
+
+    for category, subcategories in subcategories_for_each_category.items():
+        for subcategory, urls in subcategories.items():
+            for url in urls:
+                # Update the subcategory for each URL in the database
+                cursor.execute("""
+                    UPDATE website
+                    SET subcategory = ?
+                    WHERE url = ?
+                """, (subcategory, url))
+
+    conn.commit()
+    conn.close()
+
