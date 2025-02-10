@@ -4,7 +4,8 @@ from utils.change_trafilatura import change_download_timeout
 from llm_calls import summarise_website, categorize_website
 from send_mail import send_mail, create_mail_body
 from dotenv import load_dotenv
-from database import add_datarecord
+from database import add_datarecord, is_duplicate_url 
+
 
 
 load_dotenv()
@@ -17,6 +18,11 @@ webpages = download_webpages(links)
 extracted_text, extracted_metadata = extract_text(webpages)
 
 for link, text in extracted_text.items():
+    
+    if is_duplicate_url(link):
+            print(f"URL bereits verarbeitet: {link} -> Überspringe Verarbeitung.")
+            continue
+
     print(link)
 
     category, subcategory = categorize_website(text)

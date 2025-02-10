@@ -35,6 +35,14 @@ def add_datarecord(url, html_text, category, subcategory, summary, mail_sent=Fal
     conn.close()
 
     print(f"Datarecord {url} added to database")
+    
+def is_duplicate_url(url):
+    conn = sqlite3.connect('RSS_feed.db')
+    c = conn.cursor()
+    c.execute("SELECT url FROM website WHERE url = ?", (url,))
+    result = c.fetchone()
+    conn.close()
+    return result is not None
 
 
 def get_unsent_entries():
