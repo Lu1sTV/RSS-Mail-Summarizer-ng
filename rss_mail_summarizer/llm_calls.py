@@ -16,7 +16,7 @@ rate_limiter = InMemoryRateLimiter(
 
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
+    model="gemini-2.0-flash",
     google_api_key=GEMINI_API_KEY,
     temperature=0,
     max_tokens=None,
