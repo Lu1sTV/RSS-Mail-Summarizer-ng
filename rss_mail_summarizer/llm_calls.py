@@ -192,6 +192,37 @@ def get_subcategories(category_summaries):
                 return None
 
 
+def summarise_websites(html_text):
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
+                You are an  assistant that summarises html websites in about 3 sentences using text the user provides.
+                You return the url and the summary for each portion of the recieved text.
+
+                Here is an example: 
+                *   **URL:** https://github.com/xajik/thedeck
+                "The Deck" is a mobile multiplayer offline card games aggregator written in Dart and Flutter, designed to provide a user-friendly digital environment for playing classic card games. It features a unique ability to assign one device as the "table" to display the real-time state of the cards, enhancing the cooperative gaming experience. The project welcomes contributions and provides instructions for setup, building, and releasing the app.
+                
+                If the user does not provide website text, return only the following sentence:
+                
+                "No text provided!"
+                """
+            ),
+            ("human", "{input}"),
+        ]
+    )
+
+    chain = prompt | llm
+    response = chain.invoke(
+        {
+            "input": html_text,
+        }
+    ).content
+
+    return response
+
 
 
 
