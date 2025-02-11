@@ -3,6 +3,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 import os
 from langchain_core.rate_limiters import InMemoryRateLimiter
+import json
+import ast
 
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
@@ -85,20 +87,7 @@ def categorize_website(html_text):
         }
     ).content
 
-    # Parsing the response
-    if response == "Uncategorized":
-        return "Uncategorized", None  # Category is 'Uncategorized', no subcategory
-
-    # Split the response into category and subcategory
-    try:
-        category_part, subcategory_part = response.split(", ")
-        category = category_part.split(": ")[1]
-        subcategory = subcategory_part.split(": ")[1]
-    except (IndexError, ValueError):
-        # In case of unexpected response format
-        return "Error", "Invalid response format provided by llm"
-
-    return category, subcategory
+    return response
 
 
 def get_subcategories(category_summaries):
@@ -144,7 +133,7 @@ def get_subcategories(category_summaries):
                 """
                 You are an expert in categorizing content. Given a list of summaries, your task is to identify subgroups within the summaries that share a common theme. Each subgroup should have at least four summaries with a similar topic. For each identified subgroup, generate a suitable subcategory that represents the common theme and return all subcategories formatted as a python dictionary with the subcategory as the key and the URLs as the values.
 
-                If there are no subgroups with at least four summaries sharing a common theme, return only the word "none". Only return subcategories for subgroups that clearly share a similar topic.
+                If there are no subgroups with at least four summaries sharing a common theme, return only a single word: none. Only return subcategories for subgroups that clearly share a similar topic.
 
                 Example 1:
                 Summaries:
@@ -156,7 +145,7 @@ def get_subcategories(category_summaries):
                 - "New fashion trends are focusing on sustainability."
 
                 Subcategories:
-                {"AI Applications": ["url1", "url2", "url3", "url4"]}
+                {{"AI Applications": ["url1", "url2", "url3", "url4"]}}
 
                 Example 2:
                 Summaries:
@@ -185,8 +174,22 @@ def get_subcategories(category_summaries):
         }
     ).content
 
-    # Return None if the response is "none"
-    return None if response.strip().lower() == "none" else response
+    # Clean and check the response
+    response = response.strip()
+    if response.lower() == "none":
+        print("No relevant subcategories identified")
+        return None
+    else:
+        try:
+            # Attempt to parse the response as a JSON string
+            return json.loads(response)
+        except json.JSONDecodeError:
+            try:
+                # Attempt to parse the response as a string representation of a dictionary
+                return ast.literal_eval(response)
+            except (SyntaxError, ValueError):
+                # Handle the case where the response is not a valid dictionary string
+                return None
 
 
 

@@ -97,41 +97,53 @@ def create_mail_body(file_name="mail_body.md"):
 
 
 
-def create_markdown_report(summaries_by_category, subcategories_for_each_category):
+def create_markdown_report(unsent_entries, markdown_report_path):
     """
-    Erstellt eine Markdown-Datei mit allen Artikeln, geordnet nach Kategorien und Subkategorien.
+    Erstellt eine Markdown-Datei mit allen ungesendeten Artikeln, geordnet nach Kategorien und Subkategorien.
 
     Input:
-    - summaries_by_category (dict): Ein Dictionary, in dem jede Kategorie eine Liste von Artikeln enthält.
-    - subcategories_for_each_category (dict): Ein Dictionary, in dem jede Kategorie ein Dictionary von Subkategorien enthält.
+    - unsent_entries (list): Eine Liste von Tupeln, wobei jedes Tupel (url, category, summary, subcategory) enthält.
 
     Output:
     - Erstellt eine Markdown-Datei mit dem Namen "news_report.md".
     """
-    with open("news_report.md", "w") as file:
+    # Dictionary zur Organisation der Artikel nach Kategorien und Subkategorien
+    categorized_entries = {}
+
+    for url, category, summary, subcategory in unsent_entries:
+        if category not in categorized_entries:
+            categorized_entries[category] = {}
+
+        if subcategory:
+            if subcategory not in categorized_entries[category]:
+                categorized_entries[category][subcategory] = []
+            categorized_entries[category][subcategory].append((summary, url))
+        else:
+            if "No Subcategory" not in categorized_entries[category]:
+                categorized_entries[category]["No Subcategory"] = []
+            categorized_entries[category]["No Subcategory"].append((summary, url))
+
+    with open(markdown_report_path, "w") as file:
         # Überschrift
         file.write("# News of the Day\n\n")
 
-        for category, articles in summaries_by_category.items():
+        for category, subcategories in categorized_entries.items():
             # Kategorie-Überschrift
             file.write(f"## {category}\n\n")
 
-            # Überprüfen, ob es Subkategorien gibt
-            if category in subcategories_for_each_category:
-                subcategories = subcategories_for_each_category[category]
-
-                for subcategory, urls in subcategories.items():
+            for subcategory, articles in subcategories.items():
+                if subcategory == "No Subcategory":
+                    # Artikel ohne Subkategorie direkt unter der Kategorie auflisten
+                    for summary, url in articles:
+                        file.write(f"- {summary} [(click here)]({url})\n")
+                else:
                     # Subkategorie-Überschrift
                     file.write(f"### {subcategory}\n\n")
-
-                    for article in articles:
-                        if article['url'] in urls:
-                            # Artikel-Zusammenfassung und Link
-                            file.write(f"- {article['summary']} [(click here)]({article['url']})\n")
-            else:
-                for article in articles:
-                    # Artikel-Zusammenfassung und Link
-                    file.write(f"- {article['summary']} [(click here)]({article['url']})\n")
+                    for summary, url in articles:
+                        file.write(f"- {summary} [(click here)]({url})\n")
 
             file.write("\n")
+
+
+
 

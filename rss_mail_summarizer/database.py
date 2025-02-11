@@ -58,6 +58,17 @@ def get_unsent_entries():
     return entries
 
 
+def mark_all_as_sent():
+    conn = sqlite3.connect('RSS_feed.db')
+    c = conn.cursor()
+
+    c.execute("UPDATE website SET mail_sent = 1")
+    conn.commit()
+    conn.close()
+    print("All entries marked as sent")
+
+
+
 def mark_as_sent(entries):
     conn = sqlite3.connect('RSS_feed.db')
     c = conn.cursor()
@@ -173,4 +184,5 @@ def update_subcategories_in_db(subcategories_for_each_category):
 
     conn.commit()
     conn.close()
+
 
