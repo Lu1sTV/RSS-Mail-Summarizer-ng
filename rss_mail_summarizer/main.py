@@ -20,7 +20,7 @@ extracted_text, extracted_metadata = extract_text(webpages)
 for link, text in extracted_text.items():
     
     if is_duplicate_url(link):
-            print(f"URL bereits verarbeitet: {link} -> Überspringe Verarbeitung.")
+            print(f"URL has already been summarized: {link}")
             continue
 
     print(link)
