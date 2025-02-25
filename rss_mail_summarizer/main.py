@@ -2,7 +2,7 @@ import os
 from utils.extract_html_content import extract_links_from_rss, download_webpages, extract_text
 from utils.change_trafilatura import change_download_timeout
 from llm_calls import summarise_website, categorize_website, get_subcategories
-from send_mail import send_mail, create_mail_body, create_markdown_report
+from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
 from database import add_datarecord, is_duplicate_url, get_summaries_by_category, update_subcategories_in_db, get_unsent_entries
 
