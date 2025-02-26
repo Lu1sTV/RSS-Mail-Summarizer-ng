@@ -1,3 +1,5 @@
+import concurrent.futures
+
 import requests
 from bs4 import BeautifulSoup
 from trafilatura import fetch_url, extract, fetch_response
@@ -25,15 +27,43 @@ def extract_links_from_rss(rss_url):
         return []
 
 
-def download_webpages(links):
+############################################
+
+def download_webpages_concurrently(links):
+    webpages = {}
+
+    def fetch_and_store(link):
+        webpage = fetch_response(link)
+        if webpage is None:
+            print(f"Request for {link} timed out")
+            return link, None
+        # print(f"Content of {link} downloaded successfully")
+        return link, webpage
+
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_to_link = {executor.submit(fetch_and_store, link): link for link in links}
+        for future in concurrent.futures.as_completed(future_to_link):
+            link, webpage = future.result()
+            if webpage is not None:
+                webpages[link] = webpage
+
+    print(len(webpages))
+    return webpages
+
+
+#########################################
+
+def download_webpages_sequentially(links):
     webpages = {}
     for link in links:
         webpage = fetch_response(link)
         if webpage is None:     # if the request times out it returns "None"
             print(f"Request for {link} timed out")
             continue
+        # print(f"Content of {link} downloaded successfully")
         webpages[link] = webpage
 
+    print(len(webpages))
     return webpages
 
 
@@ -49,7 +79,6 @@ def extract_text(webpages):
             extracted_metadata[link] = metadata
 
     return extracted_text, extracted_metadata
-
 
 
 

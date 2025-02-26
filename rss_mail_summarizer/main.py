@@ -1,5 +1,6 @@
 import os
-from utils.extract_html_content import extract_links_from_rss, download_webpages, extract_text
+import time
+from utils.extract_html_content import extract_links_from_rss, download_webpages_concurrently, download_webpages_sequentially, extract_text
 from utils.change_trafilatura import change_download_timeout
 from llm_calls import summarise_website, categorize_website, get_subcategories
 from send_mail import send_mail, create_markdown_report
@@ -13,12 +14,12 @@ load_dotenv()
 rss_url = "https://mstdn.social/@pinboard_pop.rss"
 
 links = extract_links_from_rss(rss_url)
-change_download_timeout(10)
-webpages = download_webpages(links)
+change_download_timeout(3)
+webpages = download_webpages_concurrently(links)
 extracted_text, extracted_metadata = extract_text(webpages)
 
 for link, text in extracted_text.items():
-    
+
     if is_duplicate_url(link):
             print(f"URL has already been summarized: {link}")
             continue
