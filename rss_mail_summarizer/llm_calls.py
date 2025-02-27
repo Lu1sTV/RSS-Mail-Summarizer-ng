@@ -1,3 +1,5 @@
+import re
+
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
@@ -222,6 +224,74 @@ def summarise_websites(html_text):
     ).content
 
     return response
+
+
+
+#####################
+
+def summarise_and_categorize_websites(html_dict):
+    # Verdopple geschweifte Klammern im HTML-Text, um sie als Literalzeichen zu behandeln
+    combined_input = "\n\n".join(
+        f"Input {i+1} (URL: {url}):\n{text.replace('{', '{{').replace('}', '}}')}"
+        for i, (url, text) in enumerate(html_dict.items())
+    )
+
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                f"""
+                You are an assistant that processes multiple HTML website texts provided by the user.
+                For each input, summarize the content in about 3 sentences and categorize it into one of the following categories:
+
+                - Technology and Gadgets
+                - Politics
+                - Business and Finance
+                - Sports
+                - Education and Learning
+                - Health and Wellness
+                - Entertainment and Lifestyle
+                - Travel and Tourism
+
+                If a website does not fit into one of these categories, return 'Uncategorized'.
+                If no text is provided for an input, return "No text provided!" for that input.
+
+                Format your response as follows:
+                Input 1 (URL: <url>):
+                Summary: <summary>
+                Category: <category>
+
+                Input 2 (URL: <url>):
+                Summary: <summary>
+                Category: <category>
+
+                ...
+                """
+            ),
+            ("human", f"{combined_input}"),
+        ]
+    )
+
+    chain = prompt | llm
+    response = chain.invoke({"input": combined_input}).content
+
+    # Parse the response and store it in a dictionary
+    results = {}
+    for entry in response.split('\n\n'):
+        if "Input" in entry:
+            url_match = re.search(r"URL: (.+?)\):", entry)
+            summary_match = re.search(r"Summary: (.+)", entry)
+            category_match = re.search(r"Category: (.+)", entry)
+            if url_match and summary_match and category_match:
+                url = url_match.group(1)
+                summary = summary_match.group(1)
+                category = category_match.group(1)
+                results[url] = {"summary": summary, "category": category}
+
+    return results
+
+
+
 
 
 
