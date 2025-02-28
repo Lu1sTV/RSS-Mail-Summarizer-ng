@@ -1,144 +1,110 @@
-import re
-import sqlite3
+import json
+import os
 from datetime import datetime
+import firebase_admin
+from firebase_admin import credentials, firestore
 
-conn = sqlite3.connect('RSS_feed.db')
-c = conn.cursor()
+import urllib.parse
 
-#create table
-c.execute("""CREATE TABLE IF NOT EXISTS website (
-    url TEXT, 
-    html TEXT, 
-    was_summarized INTEGER, 
-    summary TEXT, 
-    category TEXT, 
-    subcategory TEXT, 
-    mail_sent INTEGER DEFAULT 0, 
-    timestamp TEXT
-)""")
 
-conn.commit()
+# Service Account Schlüssel laden
+cred = credentials.Certificate("serviceAccountKey.json")
+firebase_admin.initialize_app(cred)
+
+# Firestore-Client erstellen
+db = firestore.client()
+
+#als document ID in der website collection in der Firebase
+#wird die url verwendet. Bei dieser müssen jedoch die '/' entfernt/ersetzt werden:
+def safe_url(url):
+    safe_url = url.replace("/", "-")
+    return safe_url
 
 
 def add_datarecord(url, html_text, category, summary,subcategory=None, mail_sent=False):
-    conn = sqlite3.connect('RSS_feed.db')
-    c = conn.cursor()
-
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
-    c.execute("""
-        INSERT INTO website (url, html, category, subcategory, was_summarized, summary, mail_sent, timestamp)
-        VALUES (?, ?, ?, ?, 0, ?, ?, ?)
-    """, (url, html_text, category, subcategory, summary, int(mail_sent), timestamp))
+    db.collection("website").document(safe_url(url)).set({
+        "url": url,
+        "html": html_text,
+        "category": category,
+        "summary": summary,
+        "subcategory": subcategory,
+        "mail_sent": mail_sent,
+        "timestamp": timestamp   
+    }, merge=True)
 
-    conn.commit()
-    conn.close()
 
-    print(f"Datarecord {url} added to database")
-    
+    print(f"a datarecord for {url} was added")
+
 def is_duplicate_url(url):
-    conn = sqlite3.connect('RSS_feed.db')
-    c = conn.cursor()
-    c.execute("SELECT url FROM website WHERE url = ?", (url,))
-    result = c.fetchone()
-    conn.close()
-    return result is not None
+    doc = db.collection("website").document(safe_url(url)).get()
+    return doc.exists
 
 
 def get_unsent_entries():
-    conn = sqlite3.connect('RSS_feed.db')
-    c = conn.cursor()
+    websites = db.collection('website').stream()
 
-    # Alle Einträge mit mail_sent == 0 abfragen
-    c.execute("SELECT url, category, summary, subcategory FROM website WHERE mail_sent = 0")
-    entries = c.fetchall()
+    entries = []
 
-    conn.close()
+    for w in websites:
+        if w.get('mail_sent') == False:
+            url = w.get('url')
+            category = w.get('category')
+            summary = w.get('summary')
+            subcategory = w.get('subcategory')
 
+            entries.append((url, category, summary, subcategory))
+    
+    # entries is a list of tuples with the following information: (url, category, summary, subcategory)
     return entries
 
 
 def mark_all_as_sent():
-    conn = sqlite3.connect('RSS_feed.db')
-    c = conn.cursor()
+    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()    
+    
+    for w in websites:
+        db.collection('website').document(w.id).update({'mail_sent': True})
 
-    c.execute("UPDATE website SET mail_sent = 1")
-    conn.commit()
-    conn.close()
     print("All entries marked as sent")
 
 
 
 def mark_as_sent(entries):
-    conn = sqlite3.connect('RSS_feed.db')
-    c = conn.cursor()
+    # entries = [] 
 
     for entry in entries:
         url = entry[0]
-        c.execute("UPDATE website SET mail_sent = 1 WHERE url = ?", (url,))
+        db.collection('website').document(safe_url(url)).update({'mail_sent': True})
 
-    conn.commit()
-    conn.close()
     print("Entries marked as sent.")
 
 
-# Nur für Testzwecke nutzen
-def reset_last_20_entries():
-    # Verbindung zur Datenbank herstellen
-    conn = sqlite3.connect('RSS_feed.db')
-    c = conn.cursor()
-
-    # Die letzten 20 Einträge mit mail_sent = 0 auswählen (nach timestamp sortiert)
-    c.execute("""
-        SELECT url FROM website WHERE mail_sent = 1 ORDER BY timestamp DESC LIMIT 20
-    """)
-    entries = c.fetchall()
-
-    if entries:
-        # Für jedes Entry den mail_sent Wert auf 0 setzen
-        for entry in entries:
-            url = entry[0]
-            c.execute("UPDATE website SET mail_sent = 0 WHERE url = ?", (url,))
-
-        conn.commit()
-        print(f"Successfully reset 'mail_sent' to 0 for {len(entries)} entries.")
-    else:
-        print("No entries found to reset.")
-
-    conn.close()
-
-
 def get_summaries_by_category():
-    conn = sqlite3.connect("RSS_feed.db")
-    cursor = conn.cursor()
+    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()
 
-    # Select categories with at least 4 unsent emails
-    cursor.execute("""
-        SELECT category
-        FROM website
-        WHERE mail_sent = 0
-        GROUP BY category
-        HAVING COUNT(*) >= 4
-    """)
+    category_counts = {}
 
-    categories = cursor.fetchall()
+    # counts how many articles there are per category (only checks the ones not yet sent in an email)
+    for w in websites:
+        category = w.get('category')
 
+        if category in category_counts:
+            category_counts[category] += 1
+        else:
+            category_counts[category] = 1
+    
     summaries_by_category = {}
 
-    # For each category, retrieve summaries and URLs
-    for (category,) in categories:
-        cursor.execute("""
-            SELECT summary, url
-            FROM website
-            WHERE category = ? AND mail_sent = 0
-        """, (category,))
+    #saves the url and summary of all websites belonging to a category with count >=4
+    for category, counts in category_counts.items():
+        if counts >=4:
+            subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
 
-        # Retrieve summaries and URLs for the current category
-        summaries = cursor.fetchall()
-        summaries_by_category[category] = [{"summary": summary, "url": url} for summary, url in summaries]
+            for s in subcategorise:
+                summaries_by_category[category] = [{"summary": s.get('summary'), "url": s.get('url')}]
 
-    conn.close()
-
+    # returns a dictionary with summary, url for the process of subcategorizing relevant articles
     return summaries_by_category
 
 
@@ -169,20 +135,12 @@ def update_subcategories_in_db(subcategories_for_each_category):
         }
     }
     """
-    conn = sqlite3.connect("RSS_feed.db")
-    cursor = conn.cursor()
+
 
     for category, subcategories in subcategories_for_each_category.items():
         for subcategory, urls in subcategories.items():
             for url in urls:
                 # Update the subcategory for each URL in the database
-                cursor.execute("""
-                    UPDATE website
-                    SET subcategory = ?
-                    WHERE url = ?
-                """, (subcategory, url))
-
-    conn.commit()
-    conn.close()
+                db.collection("website").document(safe_url(url)).set({"subcategory": subcategory}, merge=True)
 
 
