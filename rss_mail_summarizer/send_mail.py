@@ -53,56 +53,13 @@ def send_mail(sender_email, sender_password, recipient_email, subject=None, mail
 
 
 
-
-def group_entries_by_category(entries):
-    grouped_entries = defaultdict(lambda: defaultdict(list))  # Group by category -> subcategory -> list of articles
-
-    # Durch alle Einträge iterieren und in das Dictionary einfügen
-    for entry in entries:
-        url, category, subcategory, summary = entry
-        grouped_entries[category][subcategory].append((url, summary))
-
-    return grouped_entries
-
-
-def create_markdown_file(grouped_entries, filename="mail_body.md"):
-    with open(filename, "w") as file:
-        file.write("# Today's News\n\n")
-
-        # Für jede Kategorie
-        for category, subcategories in grouped_entries.items():
-            file.write(f"## Category: {category}\n")
-
-            # Für jede Subkategorie in der Kategorie
-            for subcategory, articles in subcategories.items():
-                file.write(f"### Subcategory: {subcategory}\n")
-
-                # Für jeden Artikel in der Subkategorie
-                for url, summary in articles:
-                    file.write(f"- **URL**: {url}\n")
-                    file.write(f"  **Summary**: {summary}\n")
-                file.write("\n")
-
-            file.write("\n---\n\n")
-
-
-def create_mail_body(file_name="mail_body.md"):
-    entries = get_unsent_entries()  # Abrufen der nicht versendeten Einträge
-    if entries:
-        grouped_entries = group_entries_by_category(entries)  # Gruppieren der Einträge
-        create_markdown_file(grouped_entries, file_name)  # Erstellen der Markdown-Datei
-        print("Markdown file created successfully!")
-    else:
-        print("No unsent entries found.")
-
-
-
-def create_markdown_report(unsent_entries, markdown_report_path):
+def create_markdown_report(summaries_and_categories, markdown_report_path):
     """
-    Erstellt eine Markdown-Datei mit allen ungesendeten Artikeln, geordnet nach Kategorien und Subkategorien.
+    Erstellt eine Markdown-Datei mit allen neuen Artikeln, geordnet nach Kategorien und Subkategorien.
 
     Input:
-    - unsent_entries (list): Eine Liste von Tupeln, wobei jedes Tupel (url, category, summary, subcategory) enthält.
+    - summaries_and_categories (dict): Ein Dictionary mit URLs als Schlüssel und Werten, die ein Dictionary mit
+      'summary', 'category' und 'subcategory' sind.
 
     Output:
     - Erstellt eine Markdown-Datei mit dem Namen "news_report.md".
@@ -110,7 +67,11 @@ def create_markdown_report(unsent_entries, markdown_report_path):
     # Dictionary zur Organisation der Artikel nach Kategorien und Subkategorien
     categorized_entries = {}
 
-    for url, category, summary, subcategory in unsent_entries:
+    for url, details in summaries_and_categories.items():
+        category = details["category"]
+        subcategory = details["subcategory"]
+        summary = details["summary"]
+
         if category not in categorized_entries:
             categorized_entries[category] = {}
 

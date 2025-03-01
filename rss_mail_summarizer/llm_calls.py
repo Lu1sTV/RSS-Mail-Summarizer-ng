@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -31,206 +32,7 @@ llm = ChatGoogleGenerativeAI(
 
 
 
-
-def summarise_website(html_text):
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """
-                You are an  assistant that summarises html websites in about 3 sentences using text the user provides.
-                If the user does not provide website text, return only the following sentence:
-                
-                "No text provided!"
-                """
-            ),
-            ("human", "{input}"),
-        ]
-    )
-
-    chain = prompt | llm
-    response = chain.invoke(
-        {
-            "input": html_text,
-        }
-    ).content
-
-    return response
-
-
-def categorize_website(html_text):
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """
-                You are an assistant that categorizes text extracted from HTML websites into one of the following categories:
-
-                - Technology and Gadgets
-                - Politics
-                - Business and Finance
-                - Sports
-                - Education and Learning
-                - Health and Wellness
-                - Entertainment and Lifestyle
-                - Travel and Tourism
-                
-                If a website does not fit into one of these categories, return only a single word: 'Uncategorized'.                
-                """,
-            ),
-            ("human", "{input}"),
-        ]
-    )
-
-    chain = prompt | llm
-    response = chain.invoke(
-        {
-            "input": html_text,
-        }
-    ).content
-
-    return response
-
-
-def get_subcategories(category_summaries):
-    """
-    This function processes a list of summaries for a single category and identifies subcategories
-    within the summaries that share a common theme. Each subcategory must have at least four summaries
-    with a similar topic. The function returns a dictionary where each key is a subcategory and each value
-    is a list of URLs associated with that subcategory.
-
-    Input:
-    - category_summaries (list): A list of dictionaries, each containing:
-        - "summary" (str): A string representing the summary of an article.
-        - "url" (str): A string representing the URL associated with the summary.
-
-    Example Input:
-    [
-        {"summary": "AI is improving customer service through chatbots.", "url": "http://example.com/tech1"},
-        {"summary": "AI algorithms are optimizing supply chain management.", "url": "http://example.com/tech2"},
-        {"summary": "AI in healthcare is revolutionizing diagnostic tools.", "url": "http://example.com/tech3"},
-        {"summary": "AI-driven personalized learning is the future of education.", "url": "http://example.com/tech4"}
-    ]
-
-    Output:
-    - Returns a dictionary where each key is a subcategory name, and each value is a list of URLs associated
-      with that subcategory. If no suitable subcategories are identified, the function returns None.
-
-    Example Output:
-    {
-        "AI Applications": [
-            "http://example.com/tech1",
-            "http://example.com/tech2",
-            "http://example.com/tech3",
-            "http://example.com/tech4"
-        ]
-    }
-
-    The function uses a language model to analyze the summaries and determine appropriate subcategories.
-    """
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """
-                You are an expert in categorizing content. Given a list of summaries, your task is to identify subgroups within the summaries that share a common theme. Each subgroup should have at least four summaries with a similar topic. For each identified subgroup, generate a suitable subcategory that represents the common theme and return all subcategories formatted as a python dictionary with the subcategory as the key and the URLs as the values.
-
-                If there are no subgroups with at least four summaries sharing a common theme, return only a single word: none. Only return subcategories for subgroups that clearly share a similar topic.
-
-                Example 1:
-                Summaries:
-                - "AI is improving customer service through chatbots."
-                - "AI algorithms are optimizing supply chain management."
-                - "AI in healthcare is revolutionizing diagnostic tools."
-                - "AI-driven personalized learning is the future of education."
-                - "The impact of climate change on polar regions is severe."
-                - "New fashion trends are focusing on sustainability."
-
-                Subcategories:
-                {{"AI Applications": ["url1", "url2", "url3", "url4"]}}
-
-                Example 2:
-                Summaries:
-                - "The latest smartphone releases have advanced cameras."
-                - "Climate change is affecting polar regions significantly."
-                - "Sustainable fashion is trending this season."
-                - "New advancements in mobile photography are exciting."
-                - "Scientists study climate change impacts on ecosystems."
-                - "Eco-friendly materials are popular in fashion."
-
-                Subcategories:
-                - "none"
-                """
-            ),
-            ("human", "Summaries: {input}"),
-        ]
-    )
-
-    # Prepare the input for the prompt
-    input_summaries = [f"{item['summary']} (URL: {item['url']})" for item in category_summaries]
-
-    chain = prompt | llm
-    response = chain.invoke(
-        {
-            "input": "\n- ".join(input_summaries),  # Format the summaries as a list
-        }
-    ).content
-
-    # Clean and check the response
-    response = response.strip()
-    if response.lower() == "none":
-        print("No relevant subcategories identified")
-        return None
-    else:
-        try:
-            # Attempt to parse the response as a JSON string
-            return json.loads(response)
-        except json.JSONDecodeError:
-            try:
-                # Attempt to parse the response as a string representation of a dictionary
-                return ast.literal_eval(response)
-            except (SyntaxError, ValueError):
-                # Handle the case where the response is not a valid dictionary string
-                return None
-
-
-def summarise_websites(html_text):
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """
-                You are an  assistant that summarises html websites in about 3 sentences using text the user provides.
-                You return the url and the summary for each portion of the recieved text.
-
-                Here is an example: 
-                *   **URL:** https://github.com/xajik/thedeck
-                "The Deck" is a mobile multiplayer offline card games aggregator written in Dart and Flutter, designed to provide a user-friendly digital environment for playing classic card games. It features a unique ability to assign one device as the "table" to display the real-time state of the cards, enhancing the cooperative gaming experience. The project welcomes contributions and provides instructions for setup, building, and releasing the app.
-                
-                If the user does not provide website text, return only the following sentence:
-                
-                "No text provided!"
-                """
-            ),
-            ("human", "{input}"),
-        ]
-    )
-
-    chain = prompt | llm
-    response = chain.invoke(
-        {
-            "input": html_text,
-        }
-    ).content
-
-    return response
-
-
-
-#####################
-
 def summarise_and_categorize_websites(html_dict):
-    # Verdopple geschweifte Klammern im HTML-Text, um sie als Literalzeichen zu behandeln
     combined_input = "\n\n".join(
         f"Input {i+1} (URL: {url}):\n{text.replace('{', '{{').replace('}', '}}')}"
         for i, (url, text) in enumerate(html_dict.items())
@@ -242,30 +44,38 @@ def summarise_and_categorize_websites(html_dict):
                 "system",
                 f"""
                 You are an assistant that processes multiple HTML website texts provided by the user.
-                For each input, summarize the content in about 3 sentences and categorize it into one of the following categories:
+                For each input, perform the following tasks:
 
-                - Technology and Gadgets
-                - Politics
-                - Business and Finance
-                - Sports
-                - Education and Learning
-                - Health and Wellness
-                - Entertainment and Lifestyle
-                - Travel and Tourism
+                1. Summarize the content in about 3 sentences.
+                2. Categorize it into one of the following categories:
+                   - Technology and Gadgets
+                   - Politics
+                   - Business and Finance
+                   - Sports
+                   - Education and Learning
+                   - Health and Wellness
+                   - Entertainment and Lifestyle
+                   - Travel and Tourism
+                   If a website does not fit into one of these categories, return 'Uncategorized'.
+                3. Identify specific topics or entities mentioned in the articles. These should be precise and clearly defined, such as names of technologies, events, organizations, or specific concepts discussed in the text.
 
-                If a website does not fit into one of these categories, return 'Uncategorized'.
                 If no text is provided for an input, return "No text provided!" for that input.
+                If the website is requesting the user to enable JavaScript to continue browsing, return "JavaScript required" for that input.
 
                 Format your response as follows:
                 Input 1 (URL: <url>):
                 Summary: <summary>
                 Category: <category>
+                Topics: <topic1>, <topic2>, ...
 
                 Input 2 (URL: <url>):
                 Summary: <summary>
                 Category: <category>
+                Topics: <topic1>, <topic2>, ...
 
                 ...
+
+                Ensure that the topics are specific and relevant to the main content of the article.
                 """
             ),
             ("human", f"{combined_input}"),
@@ -277,18 +87,41 @@ def summarise_and_categorize_websites(html_dict):
 
     # Parse the response and store it in a dictionary
     results = {}
+    javascript_required_urls = []
+    topic_counts = defaultdict(list)
+
     for entry in response.split('\n\n'):
         if "Input" in entry:
             url_match = re.search(r"URL: (.+?)\):", entry)
             summary_match = re.search(r"Summary: (.+)", entry)
             category_match = re.search(r"Category: (.+)", entry)
-            if url_match and summary_match and category_match:
+            topics_match = re.search(r"Topics: (.+)", entry)
+
+            if url_match and summary_match and category_match and topics_match:
                 url = url_match.group(1)
                 summary = summary_match.group(1)
                 category = category_match.group(1)
-                results[url] = {"summary": summary, "category": category}
+                topics = [topic.strip() for topic in topics_match.group(1).split(',')]
 
-    return results
+                # Check for JavaScript requirement
+                if "JavaScript required" in summary:
+                    javascript_required_urls.append(url)
+                else:
+                    results[url] = {"summary": summary, "category": category, "topics": topics, "subcategory": None}
+
+                    # Count occurrences of each topic
+                    for topic in topics:
+                        topic_counts[topic].append(url)
+
+    # Determine subcategories based on topic occurrences
+    for topic, urls in topic_counts.items():
+        if len(urls) >= 3:
+            for url in urls:
+                if results[url]["subcategory"] is None:  # Ensure only one subcategory is assigned
+                    results[url]["subcategory"] = topic
+
+    return results, javascript_required_urls
+
 
 
 

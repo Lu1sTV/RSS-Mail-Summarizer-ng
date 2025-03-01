@@ -1,11 +1,6 @@
-import json
-import os
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
-
-import urllib.parse
-
 
 # Service Account Schlüssel laden
 cred = credentials.Certificate("serviceAccountKey.json")
