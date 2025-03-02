@@ -11,14 +11,14 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 
 rate_limiter = InMemoryRateLimiter(
-    requests_per_second=0.2,  # Can only make a request once every 10 seconds!!
+    requests_per_second=0.4,  # Can only make a request once every 5 seconds!!
     check_every_n_seconds=0.1,  # Wake up every 100 ms to check whether allowed to make a request,
     max_bucket_size=1,  # Controls the maximum burst size.
 )
 
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.0-flash",
+    model="gemini-2.0-flash-lite",
     google_api_key=GEMINI_API_KEY,
     temperature=0,
     max_tokens=None,
