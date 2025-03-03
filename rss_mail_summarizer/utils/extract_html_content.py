@@ -1,8 +1,13 @@
+import sys
+import os
 import concurrent.futures
 
 import requests
 from bs4 import BeautifulSoup
 from trafilatura import fetch_url, extract, fetch_response
+
+sys.path.append(os.path.abspath(".."))
+from llm_calls import llm_find_webpage_content
 
 
 def extract_links_from_rss(rss_url):
@@ -37,15 +42,14 @@ def download_webpages_concurrently(links):
         if webpage is None:
             print(f"Request for {link} timed out")
             return link, None
-        # print(f"Content of {link} downloaded successfully")
         return link, webpage
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future_to_link = {executor.submit(fetch_and_store, link): link for link in links}
         for future in concurrent.futures.as_completed(future_to_link):
             link, webpage = future.result()
-            if webpage is not None:
-                webpages[link] = webpage
+#            if webpage is not None:
+            webpages[link] = webpage
 
     print(len(webpages))
     return webpages
@@ -71,7 +75,15 @@ def extract_text(webpages):
     extracted_text = {}
     extracted_metadata = {}
     for link, webpage in webpages.items():
-        text = extract(webpage, include_tables=False, include_comments=False, favor_recall=True, with_metadata=False)
+        if webpage is None:
+            webpage = llm_find_webpage_content(link)
+            if not webpage or webpage == "Website content could not be reached!":
+                print(f"LLM could also not access content for {link}")
+                continue  # Skip this link entirely
+            else: 
+                text = webpage
+        else:
+            text = extract(webpage, include_tables=False, include_comments=False, favor_recall=True, with_metadata=False)
         if text:
             extracted_text[link] = text
         else:
@@ -79,14 +91,3 @@ def extract_text(webpages):
             extracted_metadata[link] = metadata
 
     return extracted_text, extracted_metadata
-
-
-
-
-
-
-
-
-
-
-

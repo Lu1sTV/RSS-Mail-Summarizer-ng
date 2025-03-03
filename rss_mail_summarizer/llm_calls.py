@@ -224,6 +224,30 @@ def summarise_websites(html_text):
     return response
 
 
+def llm_find_webpage_content(link):
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
+                You are an  assistant that summarises websites in about 3 sentences by searching the website of the provided link.
+                If you are unable to access the contents of the provided website, return only the following sentence:
+                
+                "Website content could not be reached!"
+                """
+            ),
+            ("human", "{input}"),
+        ]
+    )
+
+    chain = prompt | llm
+    response = chain.invoke(
+        {
+            "input": link,
+        }
+    ).content
+
+    return response
 
 
 

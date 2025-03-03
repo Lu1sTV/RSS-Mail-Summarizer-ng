@@ -99,8 +99,7 @@ def get_summaries_by_category():
     #saves the url and summary of all websites belonging to a category with count >=4
     for category, counts in category_counts.items():
         if counts >=4:
-            subcategorise = db.collection("website").where(filter=firestore.And(firestore.FieldFilter("mail_sent", "==", False),firestore.FieldFilter("category", "==", category))).stream()
-            #subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
+            subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
 
             for s in subcategorise:
                 summaries_by_category[category] = [{"summary": s.get('summary'), "url": s.get('url')}]
@@ -143,5 +142,3 @@ def update_subcategories_in_db(subcategories_for_each_category):
             for url in urls:
                 # Update the subcategory for each URL in the database
                 db.collection("website").document(safe_url(url)).set({"subcategory": subcategory}, merge=True)
-
-
