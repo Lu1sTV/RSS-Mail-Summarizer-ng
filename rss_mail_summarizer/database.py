@@ -61,8 +61,8 @@ def get_unsent_entries():
 
 
 def mark_all_as_sent():
-    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()    
-    
+    websites = db.collection('website').where(filter=firestore.FieldFilter("mail_sent", "==", False)).stream()
+
     for w in websites:
         db.collection('website').document(w.id).update({'mail_sent': True})
 
@@ -81,7 +81,7 @@ def mark_as_sent(entries):
 
 
 def get_summaries_by_category():
-    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()
+    websites = db.collection('website').where(filter=firestore.FieldFilter("mail_sent", "==", False)).stream()
 
     category_counts = {}
 
@@ -99,8 +99,10 @@ def get_summaries_by_category():
     #saves the url and summary of all websites belonging to a category with count >=4
     for category, counts in category_counts.items():
         if counts >=4:
-            subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
-
+            subcategorise = db.collection('website').where(filter=firestore.And(
+        firestore.FieldFilter("mail_sent", "==", False),
+        firestore.FieldFilter("category", "==", category)
+    ))
             for s in subcategorise:
                 summaries_by_category[category] = [{"summary": s.get('summary'), "url": s.get('url')}]
 
