@@ -13,7 +13,8 @@ load_dotenv()
 
 rss_url = "https://mstdn.social/@pinboard_pop.rss"
 
-links = extract_links_from_rss(rss_url)
+# links = extract_links_from_rss(rss_url)
+links = ["https://neal.fun/"]
 change_download_timeout(3)
 webpages = download_webpages_concurrently(links)
 extracted_text, extracted_metadata = extract_text(webpages) # ist noch sequenziell, dauert aber nur ca. 0,5s
