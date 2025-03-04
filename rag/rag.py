@@ -10,7 +10,7 @@ import json
 import google.generativeai as genai  # Zum Ansprechen von gemini-2.0-flash
 import re
 
-load_dotenv()
+load_dotenv(dotenv_path=".env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # --- Firebase initialisieren ---
@@ -162,6 +162,8 @@ def vector_search(query, articles, top_k=5):
 
 
 
+########################################################
+# Aufruf
 ########################################################
 
 # Alle Artikel aus der Collection "website" laden
