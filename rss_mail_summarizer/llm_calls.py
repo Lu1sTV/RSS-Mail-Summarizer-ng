@@ -32,21 +32,22 @@ llm = ChatGoogleGenerativeAI(
 
 
 
-def summarise_and_categorize_websites(html_dict):
+def summarise_and_categorize_websites(links_list):
     combined_input = "\n\n".join(
-        f"Input {i+1} (URL: {url}):\n{text.replace('{', '{{').replace('}', '}}')}"
-        for i, (url, text) in enumerate(html_dict.items())
+        f"Input {i+1} (URL: {url})"
+        for i, url in enumerate(links_list)
     )
+
 
     prompt = ChatPromptTemplate.from_messages(
         [
             (
                 "system",
                 f"""
-                You are an assistant that processes multiple HTML website texts provided by the user.
+                You are an assistant that processes multiple URLs provided by the user.
                 For each input, perform the following tasks:
 
-                1. Summarize the content in about 3 sentences.
+                1. Summarize the content of the Website in about 3 sentences.
                 2. Categorize it into one of the following categories:
                    - Technology and Gadgets
                    - Politics
@@ -59,8 +60,7 @@ def summarise_and_categorize_websites(html_dict):
                    If a website does not fit into one of these categories, return 'Uncategorized'.
                 3. Identify specific topics or entities mentioned in the articles. These should be precise and clearly defined, such as names of technologies, events, organizations, or specific concepts discussed in the text.
 
-                If no text is provided for an input, return "No text provided!" for that input.
-                If the website is requesting the user to enable JavaScript to continue browsing, return "JavaScript required" for that input.
+                If you are unable to access the contents of the provided website, return "Website content could not be reached!" for that input.
 
                 Format your response as follows:
                 Input 1 (URL: <url>):
@@ -92,7 +92,7 @@ def summarise_and_categorize_websites(html_dict):
 
     for entry in response.split('\n\n'):
         if "Input" in entry:
-            url_match = re.search(r"URL: (.+?)\):", entry)
+            url_match = re.search(r"URL: (.+?)\)", entry)
             summary_match = re.search(r"Summary: (.+)", entry)
             category_match = re.search(r"Category: (.+)", entry)
             topics_match = re.search(r"Topics: (.+)", entry)
@@ -119,6 +119,7 @@ def summarise_and_categorize_websites(html_dict):
             for url in urls:
                 if results[url]["subcategory"] is None:  # Ensure only one subcategory is assigned
                     results[url]["subcategory"] = topic
+
 
     return results, javascript_required_urls
 

@@ -13,20 +13,16 @@ load_dotenv()
 
 rss_url = "https://mstdn.social/@pinboard_pop.rss"
 
-# links = extract_links_from_rss(rss_url)
-links = ["https://neal.fun/"]
-change_download_timeout(3)
-webpages = download_webpages_concurrently(links)
-extracted_text, extracted_metadata = extract_text(webpages) # ist noch sequenziell, dauert aber nur ca. 0,5s
-# das folgende programm wird nur für die "neuen" urls durchlaufen
-cleaned_text = extracted_text.copy()
-for url in extracted_text.keys():
-        if is_duplicate_url(url):
-            del cleaned_text[url]
+links = extract_links_from_rss(rss_url)
+
+for link in links[:]:
+    if(is_duplicate_url(link)):
+        print(f"URL has already been summarized: {link}")
+        links.remove(link)
+
+summaries_and_categories, javascript_required_urls = summarise_and_categorize_websites(links)
 
 
-
-summaries_and_categories, javascript_required_urls = summarise_and_categorize_websites(cleaned_text)
 for url in summaries_and_categories:
     print(f"URL: {url}")
     category = summaries_and_categories[url]["category"]
@@ -39,7 +35,8 @@ for url in summaries_and_categories:
     summary = summaries_and_categories[url]["summary"]
     print(f"Zusammenfassung: {summary}")
 
-    add_datarecord(url, extracted_text[url], category, summary, subcategory=subcategory)
+    # as the html does not get extracted there is not HTML-Text
+    add_datarecord(url, None, category, summary, subcategory=subcategory)
     print()
 
 # Ausgabe der URLs, die JavaScript benötigen - funktioniert noch nicht zuverlässig
