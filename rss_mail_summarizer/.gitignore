@@ -4,3 +4,4 @@ __pycache__/
 .idea/
 test.py
 serviceAccountKey.json
+../rag/rag-account-service-key.json

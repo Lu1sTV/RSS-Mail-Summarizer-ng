@@ -1,6 +1,10 @@
 from datetime import datetime
 import firebase_admin
 from firebase_admin import credentials, firestore
+from sentence_transformers import SentenceTransformer
+
+# -- embedding model --
+model = SentenceTransformer('all-MiniLM-L6-v2')
 
 # Service Account Schlüssel laden
 cred = credentials.Certificate("serviceAccountKey.json")
@@ -19,15 +23,18 @@ def safe_url(url):
 def add_datarecord(url, category, summary,subcategory=None, mail_sent=False):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
+    # Berechne das Embedding für die Summary
+    vector_embedding = model.encode(summary).tolist()
+
     db.collection("website").document(safe_url(url)).set({
         "url": url,
         "category": category,
         "summary": summary,
         "subcategory": subcategory,
         "mail_sent": mail_sent,
-        "timestamp": timestamp   
+        "timestamp": timestamp,
+        "vector_embedding": vector_embedding  # Füge das Embedding hinzu
     }, merge=True)
-
 
     print(f"a datarecord for {url} was added")
 
