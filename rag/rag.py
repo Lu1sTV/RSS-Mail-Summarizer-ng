@@ -10,7 +10,7 @@ import json
 import google.generativeai as genai  # Zum Ansprechen von gemini-2.0-flash
 import re
 
-load_dotenv(dotenv_path=".env")
+load_dotenv(dotenv_path="../.env")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # --- Firebase initialisieren ---
