@@ -54,15 +54,6 @@ def get_unsent_entries():
     return entries
 
 
-#def mark_all_as_sent():
-#    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()    
-    
-#    for w in websites:
-#        db.collection('website').document(w.id).update({'mail_sent': True})
-
-#    print("All entries marked as sent")
-
-
 
 def mark_as_sent(entries):
     # entries = [] 
@@ -73,68 +64,3 @@ def mark_as_sent(entries):
 
     print("Entries marked as sent.")
 
-
-#def get_summaries_by_category():
-#    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()
-
- #   category_counts = {}
-
-    # counts how many articles there are per category (only checks the ones not yet sent in an email)
-#    for w in websites:
-#        category = w.get('category')
-
-#        if category in category_counts:
-#            category_counts[category] += 1
-#        else:
-#            category_counts[category] = 1
-#    
-#    summaries_by_category = {}
-
-    #saves the url and summary of all websites belonging to a category with count >=4
-#    for category, counts in category_counts.items():
-#        if counts >=4:
-#            subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
-
-#            for s in subcategorise:
-#                summaries_by_category[category] = [{"summary": s.get('summary'), "url": s.get('url')}]
-
-    # returns a dictionary with summary, url for the process of subcategorizing relevant articles
-#    return summaries_by_category
-
-
-
-# def update_subcategories_in_db(subcategories_for_each_category):
-    """
-    Update the SQLite database with the assigned subcategories for each URL.
-
-    Input:
-    - subcategories_for_each_category (dict): A dictionary where each key is a category,
-      and each value is a dictionary with subcategories as keys and lists of URLs as values.
-
-    Example Input:
-    {
-        "Technology": {
-            "AI Applications": [
-                "http://example.com/tech1",
-                "http://example.com/tech2",
-                "http://example.com/tech3",
-                "http://example.com/tech4"
-            ]
-        },
-        "Science": {
-            "Climate Change": [
-                "http://example.com/science1",
-                "http://example.com/science2"
-            ]
-        }
-    }
-    """
-
-
-"""     for category, subcategories in subcategories_for_each_category.items():
-        for subcategory, urls in subcategories.items():
-            for url in urls:
-                # Update the subcategory for each URL in the database
-                db.collection("website").document(safe_url(url)).set({"subcategory": subcategory}, merge=True)
-
- """
