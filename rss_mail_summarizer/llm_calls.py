@@ -87,7 +87,6 @@ def summarise_and_categorize_websites(links_list):
 
     # Parse the response and store it in a dictionary
     results = {}
-    javascript_required_urls = []
     topic_counts = defaultdict(list)
 
     for entry in response.split('\n\n'):
@@ -103,15 +102,11 @@ def summarise_and_categorize_websites(links_list):
                 category = category_match.group(1)
                 topics = [topic.strip() for topic in topics_match.group(1).split(',')]
 
-                # Check for JavaScript requirement
-                if "JavaScript required" in summary:
-                    javascript_required_urls.append(url)
-                else:
-                    results[url] = {"summary": summary, "category": category, "topics": topics, "subcategory": None}
+                results[url] = {"summary": summary, "category": category, "topics": topics, "subcategory": None}
 
-                    # Count occurrences of each topic
-                    for topic in topics:
-                        topic_counts[topic].append(url)
+                # Count occurrences of each topic
+                for topic in topics:
+                    topic_counts[topic].append(url)
 
     # Determine subcategories based on topic occurrences
     for topic, urls in topic_counts.items():
@@ -121,7 +116,7 @@ def summarise_and_categorize_websites(links_list):
                     results[url]["subcategory"] = topic
 
 
-    return results, javascript_required_urls
+    return results
 
 
 

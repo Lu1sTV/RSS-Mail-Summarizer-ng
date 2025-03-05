@@ -16,12 +16,11 @@ def safe_url(url):
     return safe_url
 
 
-def add_datarecord(url, html_text, category, summary,subcategory=None, mail_sent=False):
+def add_datarecord(url, category, summary,subcategory=None, mail_sent=False):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
 
     db.collection("website").document(safe_url(url)).set({
         "url": url,
-        "html": html_text,
         "category": category,
         "summary": summary,
         "subcategory": subcategory,
@@ -55,13 +54,13 @@ def get_unsent_entries():
     return entries
 
 
-def mark_all_as_sent():
-    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()    
+#def mark_all_as_sent():
+#    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()    
     
-    for w in websites:
-        db.collection('website').document(w.id).update({'mail_sent': True})
+#    for w in websites:
+#        db.collection('website').document(w.id).update({'mail_sent': True})
 
-    print("All entries marked as sent")
+#    print("All entries marked as sent")
 
 
 
@@ -75,36 +74,36 @@ def mark_as_sent(entries):
     print("Entries marked as sent.")
 
 
-def get_summaries_by_category():
-    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()
+#def get_summaries_by_category():
+#    websites = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).stream()
 
-    category_counts = {}
+ #   category_counts = {}
 
     # counts how many articles there are per category (only checks the ones not yet sent in an email)
-    for w in websites:
-        category = w.get('category')
+#    for w in websites:
+#        category = w.get('category')
 
-        if category in category_counts:
-            category_counts[category] += 1
-        else:
-            category_counts[category] = 1
-    
-    summaries_by_category = {}
+#        if category in category_counts:
+#            category_counts[category] += 1
+#        else:
+#            category_counts[category] = 1
+#    
+#    summaries_by_category = {}
 
     #saves the url and summary of all websites belonging to a category with count >=4
-    for category, counts in category_counts.items():
-        if counts >=4:
-            subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
+#    for category, counts in category_counts.items():
+#        if counts >=4:
+#            subcategorise = db.collection('website').where(field_path="mail_sent", op_string="==", value=False).where(field_path="category", op_string="==", value=category).stream()
 
-            for s in subcategorise:
-                summaries_by_category[category] = [{"summary": s.get('summary'), "url": s.get('url')}]
+#            for s in subcategorise:
+#                summaries_by_category[category] = [{"summary": s.get('summary'), "url": s.get('url')}]
 
     # returns a dictionary with summary, url for the process of subcategorizing relevant articles
-    return summaries_by_category
+#    return summaries_by_category
 
 
 
-def update_subcategories_in_db(subcategories_for_each_category):
+# def update_subcategories_in_db(subcategories_for_each_category):
     """
     Update the SQLite database with the assigned subcategories for each URL.
 
@@ -132,10 +131,10 @@ def update_subcategories_in_db(subcategories_for_each_category):
     """
 
 
-    for category, subcategories in subcategories_for_each_category.items():
+"""     for category, subcategories in subcategories_for_each_category.items():
         for subcategory, urls in subcategories.items():
             for url in urls:
                 # Update the subcategory for each URL in the database
                 db.collection("website").document(safe_url(url)).set({"subcategory": subcategory}, merge=True)
 
-
+ """
