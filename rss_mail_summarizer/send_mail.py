@@ -4,7 +4,6 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.base import MIMEBase
 from email import encoders
 from pathlib import Path
-from collections import defaultdict
 from database import get_unsent_entries, mark_as_sent
 import markdown
 
