@@ -8,7 +8,7 @@ from database import add_datarecord, is_duplicate_url
 import functions_framework
 
 @functions_framework.http
-def main(request):
+def main(request=None):
     try:
         start_time = time.time()
         load_dotenv()
@@ -59,4 +59,6 @@ def main(request):
         return "Funktion erfolgreich ausgeführt", 200
     except Exception as e:
         return f"Fehler: {e}", 500
+
+main()
 
