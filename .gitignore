@@ -4,3 +4,4 @@ __pycache__/
 .env
 rag/rag-account-service-key.json
 rss_mail_summarizer/serviceAccountKey.json
+test.py
