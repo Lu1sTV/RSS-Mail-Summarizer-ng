@@ -1,11 +1,11 @@
 import os
 import time
-from utils.extract_html_content import extract_links_from_rss
 from llm_calls import summarise_and_categorize_websites
 from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
 from database import add_datarecord, is_duplicate_url
 import functions_framework
+from mastodon_fetcher import get_links_via_mastodon_api
 
 @functions_framework.http
 def main(request=None):
@@ -13,8 +13,12 @@ def main(request=None):
         start_time = time.time()
         load_dotenv()
 
-        rss_url = "https://mstdn.social/@pinboard_pop.rss"
-        links = extract_links_from_rss(rss_url)
+        links = get_links_via_mastodon_api()
+
+        # Kein return, wenn keine Links gefunden wurden, um den Prozess sauber zu beenden
+        if not links:
+            print("Keine neuen Links zum Verarbeiten gefunden. Programm wird beendet.")
+            return "Keine neuen Links gefunden.", 200
 
         # Entferne Duplikate
         for link in links[:]:
@@ -60,5 +64,6 @@ def main(request=None):
     except Exception as e:
         return f"Fehler: {e}", 500
 
-main()
+if __name__ == '__main__':
+    main()
 
