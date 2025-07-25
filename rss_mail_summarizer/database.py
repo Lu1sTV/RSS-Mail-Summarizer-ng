@@ -20,7 +20,7 @@ def safe_url(url):
     return safe_url
 
 
-def add_datarecord(url, category, summary, subcategory=None, mail_sent=False):
+def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     vector_embedding = model.encode(summary).tolist()
 
@@ -31,7 +31,8 @@ def add_datarecord(url, category, summary, subcategory=None, mail_sent=False):
         "mail_sent": mail_sent,
         "vector_embedding": vector_embedding,
         "processed": True,
-        "timestamp": timestamp
+        "timestamp": timestamp,
+        "reading_time": reading_time
     })
 
     print(f"Datensatz aktualisiert: {url}")
@@ -54,8 +55,9 @@ def get_unsent_entries():
             category = w.get('category')
             summary = w.get('summary')
             subcategory = w.get('subcategory')
+            reading_time = w.get('reading_time')
 
-            entries.append((url, category, summary, subcategory))
+            entries.append((url, category, summary, subcategory, reading_time))
     
     # entries is a list of tuples with the following information: (url, category, summary, subcategory)
     return entries
@@ -93,4 +95,3 @@ def add_url_to_website_collection(url):
 def get_unprocessed_urls():
     docs = db.collection("website").where("processed", "==", False).stream()
     return [doc.to_dict()["url"] for doc in docs]
-

@@ -28,7 +28,8 @@ def main(request=None):
                 url=url,
                 category=result["category"],
                 summary=result["summary"],
-                subcategory=result.get("subcategory")
+                subcategory=result.get("subcategory"),
+                reading_time=result.get("reading_time")
             )
 
         # Markdown Report und Mail
