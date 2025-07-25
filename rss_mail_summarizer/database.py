@@ -20,23 +20,23 @@ def safe_url(url):
     return safe_url
 
 
-def add_datarecord(url, category, summary,subcategory=None, mail_sent=False):
+def add_datarecord(url, category, summary, subcategory=None, mail_sent=False):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-
-    # Berechne das Embedding für die Summary
     vector_embedding = model.encode(summary).tolist()
 
-    db.collection("website").document(safe_url(url)).set({
-        "url": url,
+    db.collection("website").document(safe_url(url)).update({
         "category": category,
         "summary": summary,
         "subcategory": subcategory,
         "mail_sent": mail_sent,
-        "timestamp": timestamp,
-        "vector_embedding": vector_embedding  # Füge das Embedding hinzu
-    }, merge=True)
+        "vector_embedding": vector_embedding,
+        "processed": True,
+        "timestamp": timestamp
+    })
 
-    print(f"a datarecord for {url} was added")
+    print(f"Datensatz aktualisiert: {url}")
+
+
 
 def is_duplicate_url(url):
     doc = db.collection("website").document(safe_url(url)).get()
@@ -70,4 +70,27 @@ def mark_as_sent(entries):
         db.collection('website').document(safe_url(url)).update({'mail_sent': True})
 
     print("Entries marked as sent.")
+
+
+################################################################
+
+# erstellt neue, unverarbeitete einträge in der datenbank
+def add_url_to_website_collection(url):
+    doc_ref = db.collection("website").document(safe_url(url))
+    doc = doc_ref.get()
+    if not doc.exists:
+        doc_ref.set({
+            "url": url,
+            "processed": False,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        })
+        print(f"Neue URL gespeichert: {url}")
+    else:
+        print(f"URL bereits vorhanden (wird ignoriert): {url}")
+
+
+# holt nur unverarbeitete einträge aus der datenbank
+def get_unprocessed_urls():
+    docs = db.collection("website").where("processed", "==", False).stream()
+    return [doc.to_dict()["url"] for doc in docs]
 
