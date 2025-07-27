@@ -14,11 +14,13 @@ def main(request=None):
         load_dotenv()
 
 
-        links = get_unprocessed_urls()
+        all_links = get_unprocessed_urls()
 
-        if not links:
+        if not all_links:
             print("Keine neuen Links zum Verarbeiten gefunden.")
             return "Keine neuen Links gefunden.", 200
+        
+        github_links, links = split_links_by_github(all_links)
 
         summaries_and_categories = summarise_and_categorize_websites(links)
 
@@ -59,3 +61,8 @@ def main(request=None):
 if __name__ == '__main__':
     main()
 
+
+def split_links_by_github(links):
+    github_links = [url for url in links if "github.com" in url.lower()]
+    non_github_links = [url for url in links if "github.com" not in url.lower()]
+    return github_links, non_github_links
