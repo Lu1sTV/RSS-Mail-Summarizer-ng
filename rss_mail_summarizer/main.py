@@ -1,11 +1,13 @@
 import os
 import time
-from llm_calls import summarise_and_categorize_websites
+from llm_calls import summarise_and_categorize_websites, summarise_websites
 from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
 from database import add_datarecord, is_duplicate_url
 import functions_framework
 from database import get_unprocessed_urls
+from utils.split_links import split_links_by_github
+
 
 @functions_framework.http
 def main(request=None):
@@ -22,7 +24,9 @@ def main(request=None):
         
         github_links, links = split_links_by_github(all_links)
 
-        summaries_and_categories = summarise_and_categorize_websites(links)
+        results_default = summarise_and_categorize_websites(links)
+        results_github = summarise_websites(github_links)
+        summaries_and_categories = {**results_default, **results_github}
 
         for url in summaries_and_categories:
             result = summaries_and_categories[url]
@@ -62,7 +66,4 @@ if __name__ == '__main__':
     main()
 
 
-def split_links_by_github(links):
-    github_links = [url for url in links if "github.com" in url.lower()]
-    non_github_links = [url for url in links if "github.com" not in url.lower()]
-    return github_links, non_github_links
+
