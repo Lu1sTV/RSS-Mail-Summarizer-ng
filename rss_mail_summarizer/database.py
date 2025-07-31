@@ -1,14 +1,26 @@
 from datetime import datetime
+import os
+import json
+from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
-from firebase_admin import credentials, firestore
 from sentence_transformers import SentenceTransformer
 
 # -- embedding model --
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Service Account Schlüssel laden
-cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
+# Service Account Schlüssel laden 
+# Unterscheidung für lokale Ausführung und über Cloud Console
+def initialize_firebase():
+    if 'SERVICE_ACCOUNT_KEY' in os.environ:
+        print("Initializing Firebase with secret from environment variable")
+        service_account_info = json.loads(os.environ['SERVICE_ACCOUNT_KEY'])
+        cred = credentials.Certificate(service_account_info)
+    else:
+        print("Initializing Firebase with local serviceAccountKey.json file")
+        cred = credentials.Certificate("serviceAccountKey.json")
+
+    initialize_app(cred)
+initialize_firebase()
 
 # Firestore-Client erstellen
 db = firestore.client()
