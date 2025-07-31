@@ -1,14 +1,26 @@
 from datetime import datetime
+import os
+import json
+from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
-from firebase_admin import credentials, firestore
 from sentence_transformers import SentenceTransformer
 
 # -- embedding model --
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Service Account Schlüssel laden
-cred = credentials.Certificate("serviceAccountKey.json")
-firebase_admin.initialize_app(cred)
+# Service Account Schlüssel laden 
+# Unterscheidung für lokale Ausführung und über Cloud Console
+def initialize_firebase():
+    if 'SERVICE_ACCOUNT_KEY' in os.environ:
+        print("Initializing Firebase with secret from environment variable")
+        service_account_info = json.loads(os.environ['SERVICE_ACCOUNT_KEY'])
+        cred = credentials.Certificate(service_account_info)
+    else:
+        print("Initializing Firebase with local serviceAccountKey.json file")
+        cred = credentials.Certificate("serviceAccountKey.json")
+
+    initialize_app(cred)
+initialize_firebase()
 
 # Firestore-Client erstellen
 db = firestore.client()
@@ -20,23 +32,24 @@ def safe_url(url):
     return safe_url
 
 
-def add_datarecord(url, category, summary,subcategory=None, mail_sent=False):
+def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-
-    # Berechne das Embedding für die Summary
     vector_embedding = model.encode(summary).tolist()
 
-    db.collection("website").document(safe_url(url)).set({
-        "url": url,
+    db.collection("website").document(safe_url(url)).update({
         "category": category,
         "summary": summary,
         "subcategory": subcategory,
         "mail_sent": mail_sent,
+        "vector_embedding": vector_embedding,
+        "processed": True,
         "timestamp": timestamp,
-        "vector_embedding": vector_embedding  # Füge das Embedding hinzu
-    }, merge=True)
+        "reading_time": reading_time
+    })
 
-    print(f"a datarecord for {url} was added")
+    print(f"Datensatz aktualisiert: {url}")
+
+
 
 def is_duplicate_url(url):
     doc = db.collection("website").document(safe_url(url)).get()
@@ -54,8 +67,9 @@ def get_unsent_entries():
             category = w.get('category')
             summary = w.get('summary')
             subcategory = w.get('subcategory')
+            reading_time = w.get('reading_time')
 
-            entries.append((url, category, summary, subcategory))
+            entries.append((url, category, summary, subcategory, reading_time))
     
     # entries is a list of tuples with the following information: (url, category, summary, subcategory)
     return entries
@@ -71,3 +85,25 @@ def mark_as_sent(entries):
 
     print("Entries marked as sent.")
 
+
+################################################################
+
+# erstellt neue, unverarbeitete einträge in der datenbank
+def add_url_to_website_collection(url):
+    doc_ref = db.collection("website").document(safe_url(url))
+    doc = doc_ref.get()
+    if not doc.exists:
+        doc_ref.set({
+            "url": url,
+            "processed": False,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        })
+        print(f"Neue URL gespeichert: {url}")
+    else:
+        print(f"URL bereits vorhanden (wird ignoriert): {url}")
+
+
+# holt nur unverarbeitete einträge aus der datenbank
+def get_unprocessed_urls():
+    docs = db.collection("website").where("processed", "==", False).stream()
+    return [doc.to_dict()["url"] for doc in docs]

@@ -4,4 +4,5 @@ __pycache__/
 rag/.env
 rag/rag-account-service-key.json
 rss_mail_summarizer/serviceAccountKey.json
+firestore_migration
 test.py

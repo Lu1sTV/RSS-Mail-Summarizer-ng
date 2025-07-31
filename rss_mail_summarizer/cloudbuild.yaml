@@ -1,0 +1,26 @@
+steps:
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      [
+        'functions', 'deploy', 'rssMailFunction',
+        '--runtime', 'python310',
+        '--entry-point', 'main',
+        '--source', '.',
+        '--trigger-http',
+        '--region', 'europe-west3',
+        '--set-secrets', 'SERVICE_ACCOUNT_KEY=rss-mail-key:latest',
+        '--allow-unauthenticated'
+      ]
+
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      [
+        'functions', 'deploy', 'mastodonFunction',
+        '--runtime', 'python310',
+        '--entry-point', 'fetch_and_store_mastodon_links',
+        '--source', '.',
+        '--trigger-http',
+        '--region', 'europe-west3',
+        '--set-secrets', 'SERVICE_ACCOUNT_KEY=rss-mail-key:latest',
+        '--allow-unauthenticated'
+      ]
