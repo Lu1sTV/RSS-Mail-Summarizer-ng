@@ -54,7 +54,7 @@ def build_prompt(links_list, mode="default"):
 
                 1. Summarize the content of the Website in about 3 sentences.
                 2. Identify specific topics or entities mentioned in the articles. These should be precise and clearly defined, such as names of technologies, events, organizations, or specific concepts discussed in the text.
-                3. Estimate the reading time of the article in minutes based on the length and complexity of the content.
+                3. Estimate the reading time of the article in minutes based on the length and complexity of the content. Make sure you assess each article individually!
 
                 If you are unable to access the contents of the provided website, return "Website content could not be reached!" for that input.
 
@@ -100,7 +100,7 @@ def build_prompt(links_list, mode="default"):
                    - Travel and Tourism
                    If a website does not fit into one of these categories, return 'Uncategorized'.
                 3. Identify specific topics or entities mentioned in the articles. These should be precise and clearly defined, such as names of technologies, events, organizations, or specific concepts discussed in the text.
-                4. Estimate the reading time of the article in minutes based on the length and complexity of the content.
+                4. Estimate the reading time of the article in minutes based on the length and complexity of the content. Make sure you assess each article individually!
 
                 If you are unable to access the contents of the provided website, return "Website content could not be reached!" for that input.
 

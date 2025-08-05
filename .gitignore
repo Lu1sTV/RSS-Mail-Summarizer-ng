@@ -4,4 +4,5 @@ __pycache__/
 rag/.env
 rag/rag-account-service-key.json
 rss_mail_summarizer/serviceAccountKey.json
+rss_mail_summarizer/last_toot_id.txt
 firestore_migration
