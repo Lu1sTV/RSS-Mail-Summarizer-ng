@@ -35,6 +35,7 @@ Für die weitere Bearbeitung müssen einige der APIs aktiviert werden. Am einfac
 ```bash
 gcloud services enable cloudbuild.googleapis.com \
                        cloudfunctions.googleapis.com \
+                       cloudresourcemanager.googleapis.com \
                        cloudscheduler.googleapis.com \
                        artifactregistry.googleapis.com 
 ```
