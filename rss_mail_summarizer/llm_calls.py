@@ -115,7 +115,7 @@ def build_prompt(links_list, mode="default"):
                 Summary: <summary>
                 Category: <category>
                 Topics: <topic1>, <topic2>, ...
-                Reading Time: <X> minutes
+                Reading Time: <Y> minutes
 
                 ...
 
@@ -126,6 +126,7 @@ def build_prompt(links_list, mode="default"):
         
         ]
     ) 
+   
     return prompt
     
 
@@ -213,7 +214,7 @@ def process_llm_response(prompt):
                 Summary: <summary>
                 Category: <category>
                 Topics: <topic1>, <topic2>, ...
-                Reading Time: <X> minutes
+                Reading Time: <Y> minutes
 
                 ...
 
