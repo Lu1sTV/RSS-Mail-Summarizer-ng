@@ -1,29 +1,31 @@
-options:
-  logging: CLOUD_LOGGING_ONLY
-
 steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
-      [
-        'functions', 'deploy', 'rssMailFunction',
-        '--runtime', 'python310',
-        '--entry-point', 'main',
-        '--source', '.',
-        '--trigger-http',
-        '--region', 'europe-west3',
-        '--set-secrets', 'SERVICE_ACCOUNT_KEY=rss-mail-key:latest',
-        '--allow-unauthenticated'
-      ]
+      - functions
+      - deploy
+      - rss_mail_summarizer_main
+      - --entry-point=main
+      - --runtime=python311
+      - --trigger-http
+      - --allow-unauthenticated
+      - --source=./rss_mail_summarizer
+      - --region=europe-west3
+      - --memory=2GiB
+      - --timeout=120s
 
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
-      [
-        'functions', 'deploy', 'mastodonFunction',
-        '--runtime', 'python310',
-        '--entry-point', 'fetch_and_store_mastodon_links',
-        '--source', '.',
-        '--trigger-http',
-        '--region', 'europe-west3',
-        '--set-secrets', 'SERVICE_ACCOUNT_KEY=rss-mail-key:latest',
-        '--allow-unauthenticated'
-      ]
+      - functions
+      - deploy
+      - mastodon_connector
+      - --entry-point=fetch_and_store_mastodon_links
+      - --runtime=python311
+      - --trigger-http
+      - --allow-unauthenticated
+      - --source=./rss_mail_summarizer
+      - --region=europe-west3
+      - --memory=2GiB
+      - --timeout=120s
+
+options:
+  logging: CLOUD_LOGGING_ONLY
