@@ -7,7 +7,7 @@ from database import add_datarecord, is_duplicate_url
 import functions_framework
 from database import get_unprocessed_urls
 from utils.split_links import split_links_by_github
-from mastodon_connector import fetch_and_store_mastodon_links as target
+from mastodon_connector import fetch_and_store_mastodon_links
 
 #another test again
 
@@ -15,8 +15,9 @@ from mastodon_connector import fetch_and_store_mastodon_links as target
 #alternativ wäre ein neuer Unterordner mit einer "main.py" möglich 
 #dann auch cloudbuild.yaml anpassen
 #für lokales laufen diese beiden Zeilen (wenn gewollt) einfach auskommentieren
-def fetch_and_store_mastodon_links(request):
-    return target(request)
+def mastodon_connector_activate(request):
+    fetch_and_store_mastodon_links()
+    return "OK", 200
 
 
 @functions_framework.http
