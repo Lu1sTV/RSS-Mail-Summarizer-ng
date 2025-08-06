@@ -9,8 +9,6 @@ from database import get_unprocessed_urls
 from utils.split_links import split_links_by_github
 from mastodon_connector import fetch_and_store_mastodon_links as target
 
-#test cloudbuild
-
 # Es war notwendig diese Funktion auch in Main zu tun für Google Build.
 #alternativ wäre ein neuer Unterordner mit einer "main.py" möglich 
 #dann auch cloudbuild.yaml anpassen
