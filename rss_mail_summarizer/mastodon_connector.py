@@ -21,39 +21,54 @@ def fetch_and_store_mastodon_links():
         user_id = account['id']
         new_links = []
 
-        if not os.path.exists(STATE_FILE):
-            # ⇨ Erster Lauf: genau 20 Toots
-            print("Erster Lauf: 20 neueste Toots werden geladen.")
-            toots = mastodon.account_statuses(user_id, limit=20)
-        else:
-            # ⇨ Folge-Läufe: alle neuen Toots seit since_id
+        # Determine since_id if available
+        since_id = None
+        if os.path.exists(STATE_FILE):
             with open(STATE_FILE, 'r') as f:
                 since_id = f.read().strip()
-            print(f"Lade neue Toots seit ID {since_id} ...")
+                print(f"Lade neue Toots seit ID {since_id} ...")
+        else:
+            print("Erster Lauf: 20 neueste Toots werden geladen.")
 
-            toots = mastodon.account_statuses(user_id, since_id=since_id, limit=20)
-            all_toots = list(toots)
+        # Initial fetch
+        toots = mastodon.account_statuses(user_id, limit=20, since_id=since_id)
+        all_toots = list(toots)
 
-            # Pagination: weitere Seiten holen
-            while toots and mastodon.fetch_next(toots):
-                toots = mastodon.fetch_next(toots)
-                all_toots.extend(toots)
-            toots = all_toots
+        # Pagination (while checking ID thresholds manually)
+        while True:
+            next_page = mastodon.fetch_next(toots)
+            if not next_page:
+                break
 
-        if not toots:
+            # Filter out Toots older than or equal to since_id
+            if since_id:
+                filtered = [t for t in next_page if int(t['id']) > int(since_id)]
+            else:
+                filtered = next_page
+
+            if not filtered:
+                break
+
+            all_toots.extend(filtered)
+            toots = next_page
+
+        if not all_toots:
             print("Keine neuen Toots gefunden.")
             return
 
-        # Neuste Toot-ID speichern
-        latest_toot_id = max(int(toot['id']) for toot in toots)
+        # Save highest ID as new state
+        latest_toot_id = max(int(toot['id']) for toot in all_toots)
         with open(STATE_FILE, 'w') as f:
             f.write(str(latest_toot_id))
 
-        for toot in toots:
+        # Extract and store links
+        for toot in all_toots:
             soup = BeautifulSoup(toot['content'], 'html.parser')
             for a_tag in soup.find_all('a', href=True):
                 href = a_tag['href']
-                if MASTODON_INSTANCE_URL not in href and "hashtag" not in a_tag.get('rel', []) and "mention" not in a_tag.get('class', []):
+                if MASTODON_INSTANCE_URL not in href and \
+                   "hashtag" not in a_tag.get('rel', []) and \
+                   "mention" not in a_tag.get('class', []):
                     add_url_to_website_collection(href)
                     new_links.append(href)
 

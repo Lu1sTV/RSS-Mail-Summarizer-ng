@@ -21,8 +21,11 @@ def main(request=None):
         if not all_links:
             print("Keine neuen Links zum Verarbeiten gefunden.")
             return "Keine neuen Links gefunden.", 200
+        else:
+            print(f"{len(all_links)} neue links in der datenbank gefunden")
         
         github_links, links = split_links_by_github(all_links)
+
 
         results_default = summarise_and_categorize_websites(links)
         results_github = summarise_websites(github_links)
