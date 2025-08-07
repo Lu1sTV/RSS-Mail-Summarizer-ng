@@ -1,0 +1,5 @@
+Input 1 (URL: https://resources.github.com/enterprise/ai-powered-workforce-playbook/):
+Summary: This webpage introduces "The AI-powered workforce playbook," a guide for enterprises on integrating AI into their development workflows. It outlines how tools like GitHub Copilot can boost developer productivity, accelerate innovation, and improve code quality. The playbook offers a framework for businesses to adopt AI securely and effectively, from creating a business case to measuring the impact.
+Category: GitHub
+Topics: AI adoption, GitHub Copilot, Enterprise software development, Developer productivity, AI playbook, Innovation, Return on Investment (ROI), Security
+Reading Time: 2 minutes

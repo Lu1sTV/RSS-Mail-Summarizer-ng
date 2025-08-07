@@ -82,7 +82,7 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
         else:
             if "No Subcategory" not in categorized_entries[category]:
                 categorized_entries[category]["No Subcategory"] = []
-            categorized_entries[category]["No Subcategory"].append((summary, url))
+            categorized_entries[category][subcategory].append((summary, url, reading_time))
 
     with open(markdown_report_path, "w") as file:
         # Überschrift
@@ -95,7 +95,7 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
             for subcategory, articles in subcategories.items():
                 if subcategory == "No Subcategory":
                     # Artikel ohne Subkategorie direkt unter der Kategorie auflisten
-                    for summary, url in articles:
+                    for summary, url, reading_time in articles:
                         file.write(f"- {summary} [(read in {reading_time} min)]({url})\n")
                 else:
                     # Subkategorie-Überschrift
