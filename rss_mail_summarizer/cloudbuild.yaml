@@ -35,7 +35,7 @@ steps:
 
 availableSecrets:
   secretManager:
-    - versionName: projects/PROJECT_ID/secrets/MY_SECRET_NAME/versions/latest
+    - versionName: projects/PROJECT_ID/secrets/rss-firebase-key/versions/latest
       env: MY_SECRET
 
 options:
