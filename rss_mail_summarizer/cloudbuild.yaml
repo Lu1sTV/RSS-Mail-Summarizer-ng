@@ -1,10 +1,10 @@
 steps:
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: bash
+    secretEnv: ['MY_SECRET']
     args:
       - -c
       - |
-        SECRET=$(gcloud secrets versions access latest --secret="MY_SECRET_NAME")
         gcloud functions deploy rss_mail_summarizer_main \
           --entry-point=main \
           --runtime=python311 \
@@ -14,14 +14,14 @@ steps:
           --region=europe-west3 \
           --memory=2GiB \
           --timeout=120s \
-          --set-env-vars=MY_SECRET=$SECRET
+          --set-env-vars="MY_SECRET=${MY_SECRET}"
 
   - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: bash
+    secretEnv: ['MY_SECRET']
     args:
       - -c
       - |
-        SECRET=$(gcloud secrets versions access latest --secret="MY_SECRET_NAME")
         gcloud functions deploy mastodon_connector \
           --entry-point=fetch_and_store_mastodon_links \
           --runtime=python311 \
@@ -31,7 +31,12 @@ steps:
           --region=europe-west3 \
           --memory=2GiB \
           --timeout=120s \
-          --set-env-vars=MY_SECRET=$SECRET
+          --set-env-vars="MY_SECRET=${MY_SECRET}"
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/PROJECT_ID/secrets/MY_SECRET_NAME/versions/latest
+      env: MY_SECRET
 
 options:
   logging: CLOUD_LOGGING_ONLY
