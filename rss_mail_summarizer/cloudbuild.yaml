@@ -1,12 +1,13 @@
 steps:
+
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: bash
   secretEnv: ['MY_SECRET']
   args:
     - -c
     - |
-      gcloud functions deploy rss_mail_summarizer_main \
-        --entry-point=main \
+      gcloud functions deploy mastodon_connector \
+        --entry-point=mastodon_connector_activate \
         --runtime=python311 \
         --trigger-http \
         --allow-unauthenticated \
@@ -21,8 +22,8 @@ steps:
   args:
     - -c
     - |
-      gcloud functions deploy mastodon_connector \
-        --entry-point=mastodon_connector_activate \
+      gcloud functions deploy rss_mail_summarizer_main \
+        --entry-point=main \
         --runtime=python311 \
         --trigger-http \
         --allow-unauthenticated \
