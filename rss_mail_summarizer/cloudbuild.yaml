@@ -5,6 +5,7 @@ steps:
   args:
     - -c
     - |
+      gcloud functions deploy rss_mail_summarizer_main \
         --entry-point=main \
         --runtime=python311 \
         --trigger-http \
