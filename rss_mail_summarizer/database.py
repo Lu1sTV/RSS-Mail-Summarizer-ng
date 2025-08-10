@@ -11,15 +11,19 @@ model = SentenceTransformer('all-MiniLM-L6-v2')
 # Service Account Schlüssel laden 
 # Unterscheidung für lokale Ausführung und über Cloud Console
 def initialize_firebase():
-    if 'SERVICE_ACCOUNT_KEY' in os.environ:
-        print("Initializing Firebase with secret from environment variable")
-        service_account_info = json.loads(os.environ['SERVICE_ACCOUNT_KEY'])
+    service_account_key = os.environ.get("MY_SECRET")
+
+    if service_account_key:
+        print("Initializing Firebase with secret from environment variable MY_SECRET")
+        # The secret is expected as JSON string, so parse it
+        service_account_info = json.loads(service_account_key)
         cred = credentials.Certificate(service_account_info)
     else:
         print("Initializing Firebase with local serviceAccountKey.json file")
         cred = credentials.Certificate("serviceAccountKey.json")
 
     initialize_app(cred)
+
 initialize_firebase()
 
 # Firestore-Client erstellen

@@ -1,5 +1,11 @@
-Input 1 (URL: https://resources.github.com/enterprise/ai-powered-workforce-playbook/):
-Summary: This webpage introduces "The AI-powered workforce playbook," a guide for enterprises on integrating AI into their development workflows. It outlines how tools like GitHub Copilot can boost developer productivity, accelerate innovation, and improve code quality. The playbook offers a framework for businesses to adopt AI securely and effectively, from creating a business case to measuring the impact.
+Input 1 (URL: https://github.com/Nicholas-L-Johnson/flip-card):
+Summary: This GitHub repository showcases a simple, reusable "flip card" component implemented using vanilla HTML, CSS, and JavaScript. It demonstrates a basic UI animation where a card flips to reveal content on its reverse side. The project includes a clear `README.md` with usage instructions and a visual demonstration of the component in action.
 Category: GitHub
-Topics: AI adoption, GitHub Copilot, Enterprise software development, Developer productivity, AI playbook, Innovation, Return on Investment (ROI), Security
-Reading Time: 2 minutes
+Topics: Flip Card Component, HTML, CSS, JavaScript, UI Animation, Front-end Development, Web Components
+Reading Time: 1 minute
+
+Input 2 (URL: https://github.com/openai/harmony):
+Summary: The OpenAI Harmony repository introduces a comprehensive framework designed for evaluating and enhancing the safety of large language models (LLMs). It provides a suite of tools, datasets, and metrics to assess LLMs across critical safety dimensions such as truthfulness, toxicity, and bias. The project aims to facilitate research and development in responsible AI by offering a standardized approach to safety evaluations.
+Category: GitHub
+Topics: Large Language Models (LLMs), AI Safety, Model Evaluation, Truthfulness, Toxicity, Bias, Responsible AI, Machine Learning, Datasets, OpenAI
+Reading Time: 3 minutes
