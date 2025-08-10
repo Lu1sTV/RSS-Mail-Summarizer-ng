@@ -1,36 +1,43 @@
 steps:
-
+# Step 1: Write the secret env var (_SERVICE_ACCOUNT_KEY_JSON) to serviceAccountKey.json file
 - name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: bash
-  secretEnv: ['_MY_SECRET']
+  entrypoint: 'bash'
+  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
   args:
-    - -c
+    - '-c'
     - |
-      gcloud functions deploy mastodon_connector \
-        --entry-point=mastodon_connector_activate \
-        --runtime=python311 \
-        --trigger-http \
-        --allow-unauthenticated \
-        --source=./rss_mail_summarizer \
-        --region=europe-west3 \
-        --memory=2GiB \
-        --timeout=120s
+      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
+      echo "Wrote secret to serviceAccountKey.json"
 
+# Step 2: Deploy mastodon_connector function
 - name: 'gcr.io/cloud-builders/gcloud'
-  entrypoint: bash
-  secretEnv: ['_MY_SECRET']
   args:
-    - -c
-    - |
-      gcloud functions deploy rss_mail_summarizer_main \
-        --entry-point=main \
-        --runtime=python311 \
-        --trigger-http \
-        --allow-unauthenticated \
-        --source=./rss_mail_summarizer \
-        --region=europe-west3 \
-        --memory=2GiB \
-        --timeout=120s
+    [
+      'functions', 'deploy', 'mastodon_connector',
+      '--entry-point=mastodon_connector_activate',
+      '--runtime=python311',
+      '--trigger-http',
+      '--allow-unauthenticated',
+      '--source=./rss_mail_summarizer',
+      '--region=europe-west3',
+      '--memory=2GiB',
+      '--timeout=120s'
+    ]
+
+# Step 3: Deploy rss_mail_summarizer_main function
+- name: 'gcr.io/cloud-builders/gcloud'
+  args:
+    [
+      'functions', 'deploy', 'rss_mail_summarizer_main',
+      '--entry-point=main',
+      '--runtime=python311',
+      '--trigger-http',
+      '--allow-unauthenticated',
+      '--source=./rss_mail_summarizer',
+      '--region=europe-west3',
+      '--memory=2GiB',
+      '--timeout=120s'
+    ]
 
 availableSecrets:
   secretManager:
