@@ -21,7 +21,7 @@ steps:
     - -c
     - |
       gcloud functions deploy mastodon_connector \
-        --entry-point=fetch_and_store_mastodon_links \
+        --entry-point=mastodon_connector_activate \
         --runtime=python311 \
         --trigger-http \
         --allow-unauthenticated \
