@@ -42,7 +42,7 @@ steps:
 availableSecrets:
   secretManager:
   - versionName: projects/dhbw-projekt-467419/secrets/rss-firebase-key/versions/latest
-    env: '_MY_SECRET'
+    env: '_SERVICE_ACCOUNT_KEY_JSON'
 
 options:
   logging: CLOUD_LOGGING_ONLY
