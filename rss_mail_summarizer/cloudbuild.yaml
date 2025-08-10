@@ -2,7 +2,7 @@ steps:
 
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: bash
-  secretEnv: ['MY_SECRET']
+  secretEnv: ['_MY_SECRET']
   args:
     - -c
     - |
@@ -18,7 +18,7 @@ steps:
 
 - name: 'gcr.io/cloud-builders/gcloud'
   entrypoint: bash
-  secretEnv: ['MY_SECRET']
+  secretEnv: ['_MY_SECRET']
   args:
     - -c
     - |
@@ -35,7 +35,7 @@ steps:
 availableSecrets:
   secretManager:
   - versionName: projects/dhbw-projekt-467419/secrets/rss-firebase-key/versions/latest
-    env: 'MY_SECRET'
+    env: '_MY_SECRET'
 
 options:
   logging: CLOUD_LOGGING_ONLY
