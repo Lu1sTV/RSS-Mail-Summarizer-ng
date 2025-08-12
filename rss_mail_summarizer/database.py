@@ -56,34 +56,48 @@ def is_duplicate_url(url):
     return doc.exists
 
 
+from datetime import datetime, timedelta
+
+
+
+# database.py
 def get_unsent_entries():
-    websites = db.collection('website').stream()
+    print("[INFO] Lade Einträge aus Firestore mit mail_sent=False ...")
+    query = db.collection('website').where('mail_sent', '==', False).stream()
 
     entries = []
+    for doc in query:
+        # doc ist DocumentSnapshot; to_dict() gibt das Feldmapping
+        data = doc.to_dict() or {}
 
-    for w in websites:
-        if w.get('mail_sent') == False:
-            url = w.get('url')
-            category = w.get('category')
-            summary = w.get('summary')
-            subcategory = w.get('subcategory')
-            reading_time = w.get('reading_time')
+        entry = {
+            "doc_id": doc.id,                       # nützlich, um später gezielt zu markieren
+            "url": data.get("url"),
+            "category": data.get("category"),
+            "summary": data.get("summary"),
+            "subcategory": data.get("subcategory"),
+            "reading_time": data.get("reading_time"),
+            "timestamp": data.get("timestamp"),
+        }
+        entries.append(entry)
+        print(f"[DEBUG] Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
 
-            entries.append((url, category, summary, subcategory, reading_time))
-    
-    # entries is a list of tuples with the following information: (url, category, summary, subcategory)
+    print(f"[INFO] Insgesamt {len(entries)} Einträge mit mail_sent=False gefunden.")
     return entries
 
 
 
 def mark_as_sent(entries):
-    # entries = [] 
-
+    """
+    Markiert eine Liste von Artikeln (Dictionaries) in der Datenbank als gesendet.
+    """
     for entry in entries:
-        url = entry[0]
+        # Greife auf die URL über den Dictionary-Schlüssel 'url' zu
+        url = entry['url']
+        # Angenommen, du hast eine Funktion safe_url, die den Firestore-Dokumentnamen sicherstellt
         db.collection('website').document(safe_url(url)).update({'mail_sent': True})
 
-    print("Entries marked as sent.")
+    print(f"{len(entries)} Einträge wurden als gesendet markiert.")
 
 
 ################################################################
@@ -107,3 +121,20 @@ def add_url_to_website_collection(url):
 def get_unprocessed_urls():
     docs = db.collection("website").where("processed", "==", False).stream()
     return [doc.to_dict()["url"] for doc in docs]
+
+
+def mark_unsent_as_sent():
+    query = db.collection('website').where('mail_sent', '==', False).stream()
+
+    count = 0
+    for doc in query:
+        db.collection('website').document(doc.id).update({
+            'mail_sent': True
+        })
+        print("done")
+        count += 1
+
+    print(f"[INFO] mail_sent für {count} Einträge (mail_sent=False) auf True gesetzt.")
+
+
+# mark_unsent_as_sent()

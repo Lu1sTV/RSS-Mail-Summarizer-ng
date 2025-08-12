@@ -41,8 +41,8 @@ def send_mail(sender_email, sender_password, recipient_email, subject=None, mail
         s.quit()
         print("Email sent successfully!")
 
-        # versendete Artikel werden in der Datenbank als solche markiert
-        mark_as_sent(get_unsent_entries())
+        # # versendete Artikel werden in der Datenbank als solche markiert
+        # mark_as_sent(get_unsent_entries())
 
     except smtplib.SMTPException as e:
         print(f"SMTP error: {e}")
@@ -55,55 +55,40 @@ def send_mail(sender_email, sender_password, recipient_email, subject=None, mail
 def create_markdown_report(summaries_and_categories, markdown_report_path):
     """
     Erstellt eine Markdown-Datei mit allen neuen Artikeln, geordnet nach Kategorien und Subkategorien.
-
-    Input:
-    - summaries_and_categories (dict): Ein Dictionary mit URLs als Schlüssel und Werten, die ein Dictionary mit
-      'summary', 'category' und 'subcategory' sind.
-
-    Output:
-    - Erstellt eine Markdown-Datei mit dem Namen "news_report.md".
     """
-    # Dictionary zur Organisation der Artikel nach Kategorien und Subkategorien
     categorized_entries = {}
 
     for url, details in summaries_and_categories.items():
-        category = details["category"]
-        subcategory = details["subcategory"]
-        summary = details["summary"]
-        reading_time = details["reading_time"]
+        category = details.get("category", "n/a")
+        subcategory = details.get("subcategory") or "No Subcategory"
+        summary = details.get("summary", "n/a")
+        reading_time = details.get("reading_time", "n/a")
 
         if category not in categorized_entries:
             categorized_entries[category] = {}
 
-        if subcategory:
-            if subcategory not in categorized_entries[category]:
-                categorized_entries[category][subcategory] = []
-            categorized_entries[category][subcategory].append((summary, url))
-        else:
-            if "No Subcategory" not in categorized_entries[category]:
-                categorized_entries[category]["No Subcategory"] = []
-            categorized_entries[category][subcategory].append((summary, url, reading_time))
+        if subcategory not in categorized_entries[category]:
+            categorized_entries[category][subcategory] = []
+
+        categorized_entries[category][subcategory].append((summary, url, reading_time))
 
     with open(markdown_report_path, "w") as file:
-        # Überschrift
         file.write("# News of the Day\n\n")
 
         for category, subcategories in categorized_entries.items():
-            # Kategorie-Überschrift
             file.write(f"## {category}\n\n")
 
             for subcategory, articles in subcategories.items():
                 if subcategory == "No Subcategory":
-                    # Artikel ohne Subkategorie direkt unter der Kategorie auflisten
                     for summary, url, reading_time in articles:
                         file.write(f"- {summary} [(read in {reading_time} min)]({url})\n")
                 else:
-                    # Subkategorie-Überschrift
                     file.write(f"### {subcategory}\n\n")
-                    for summary, url in articles:
+                    for summary, url, reading_time in articles:
                         file.write(f"- {summary} [(read in {reading_time} min)]({url})\n")
 
             file.write("\n")
+
 
 
 
