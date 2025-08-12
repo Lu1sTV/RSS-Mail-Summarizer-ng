@@ -1,37 +1,44 @@
 steps:
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        SECRET=$(gcloud secrets versions access latest --secret="MY_SECRET_NAME")
-        gcloud functions deploy rss_mail_summarizer_main \
-          --entry-point=main \
-          --runtime=python311 \
-          --trigger-http \
-          --allow-unauthenticated \
-          --source=./rss_mail_summarizer \
-          --region=europe-west3 \
-          --memory=2GiB \
-          --timeout=120s \
-          --set-env-vars=MY_SECRET=$SECRET
+- name: 'gcr.io/cloud-builders/gcloud'
+  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
+      echo "Wrote secret to serviceAccountKey.json"
+      gcloud functions deploy mastodon_connector \
+        --entry-point=mastodon_connector_activate \
+        --runtime=python311 \
+        --trigger-http \
+        --allow-unauthenticated \
+        --source=./rss_mail_summarizer \
+        --region=europe-west3 \
+        --memory=2GiB \
+        --timeout=120s
 
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        SECRET=$(gcloud secrets versions access latest --secret="MY_SECRET_NAME")
-        gcloud functions deploy mastodon_connector \
-          --entry-point=fetch_and_store_mastodon_links \
-          --runtime=python311 \
-          --trigger-http \
-          --allow-unauthenticated \
-          --source=./rss_mail_summarizer \
-          --region=europe-west3 \
-          --memory=2GiB \
-          --timeout=120s \
-          --set-env-vars=MY_SECRET=$SECRET
+- name: 'gcr.io/cloud-builders/gcloud'
+  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
+  entrypoint: 'bash'
+  args:
+    - '-c'
+    - |
+      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
+      echo "Wrote secret to serviceAccountKey.json"
+      gcloud functions deploy rss_mail_summarizer_main \
+        --entry-point=main \
+        --runtime=python311 \
+        --trigger-http \
+        --allow-unauthenticated \
+        --source=./rss_mail_summarizer \
+        --region=europe-west3 \
+        --memory=2GiB \
+        --timeout=120s
+
+availableSecrets:
+  secretManager:
+  - versionName: projects/dhbw-projekt-467419/secrets/rss-firebase-key/versions/latest
+    env: '_SERVICE_ACCOUNT_KEY_JSON'
 
 options:
   logging: CLOUD_LOGGING_ONLY
