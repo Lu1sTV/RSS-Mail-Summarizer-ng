@@ -90,6 +90,8 @@ def build_prompt(links_list, mode="default"):
                 1. Summarize the content of the Website in about 3 sentences.
                 2. Categorize it into one of the following categories:
                    - Technology and Gadgets
+                   -Artificial Intelligence
+                   -Programming and Development
                    - Politics
                    - Business and Finance
                    - Sports
@@ -100,13 +102,19 @@ def build_prompt(links_list, mode="default"):
                    If a website does not fit into one of these categories, return 'Uncategorized'.
                 3. Identify specific topics or entities mentioned in the articles. These should be precise and clearly defined, such as names of technologies, events, organizations, or specific concepts discussed in the text.
                 4. Estimate the reading time of the article in minutes based on the length and complexity of the content. Make sure you assess each article individually!
+                
+                SPECIAL RULE FOR GITHUB URLs:
+                - If the URL is a GitHub **repository** page, set Category **exactly** to "GitHub" (override the list above).
+                - If content is a **GitHub Blog** Post, treat it like any other website, do not categorize it as "GitHub". Check the content of the page to determine if it is a blog post.
+                DO NOT use the "GitHub" category; choose from the normal list above if the post is a blog post. Only repositories should be categorized as "GitHub".
+                
 
                 If you are unable to access the contents of the provided website, return "Website content could not be reached!" for that input.
 
                 Format your response as follows:
                 Input 1 (URL: <url>):
                 Summary: <summary>
-                Category: <category>
+                Category: <category> # "GitHub" only for repository URLs as defined above
                 Topics: <topic1>, <topic2>, ...
                 Reading Time: <X> minutes
 
@@ -126,8 +134,7 @@ def build_prompt(links_list, mode="default"):
         ]
     ) 
 
-    return prompt
-    
+    return prompt    
 
 def process_llm_response(prompt):
     chain = prompt | llm

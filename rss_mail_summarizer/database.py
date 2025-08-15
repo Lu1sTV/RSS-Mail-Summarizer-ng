@@ -36,7 +36,7 @@ def safe_url(url):
     return safe_url
 
 
-def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False):
+def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False,  hn_points=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     vector_embedding = model.encode(summary).tolist()
 
@@ -48,7 +48,8 @@ def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_
         "vector_embedding": vector_embedding,
         "processed": True,
         "timestamp": timestamp,
-        "reading_time": reading_time
+        "reading_time": reading_time,
+        "hn_points": hn_points
     })
 
     print(f"Datensatz aktualisiert: {url}")
@@ -81,6 +82,7 @@ def get_unsent_entries():
             "summary": data.get("summary"),
             "subcategory": data.get("subcategory"),
             "reading_time": data.get("reading_time"),
+            "hn_points": data.get("hn_points"),
             "timestamp": data.get("timestamp"),
         }
         entries.append(entry)
