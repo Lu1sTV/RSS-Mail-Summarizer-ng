@@ -12,6 +12,7 @@ import functions_framework
 from database import get_unprocessed_urls
 from utils.split_links import split_links_by_github
 from mastodon_connector import fetch_and_store_mastodon_links
+from hn_popularity import fetch_hn_points
 
 # Es war notwendig diese Funktion auch in Main zu tun für Google Build.
 #alternativ wäre ein neuer Unterordner mit einer "main.py" möglich
@@ -28,7 +29,6 @@ def main(request=None):
         start_time = time.time()
         load_dotenv()
 
-        # 1️⃣ Schritt: Neue Links verarbeiten
         all_links = get_unprocessed_urls()
 
         if not all_links:
@@ -36,16 +36,12 @@ def main(request=None):
         else:
             print(f"{len(all_links)} neue Links in der Datenbank gefunden")
 
-            github_links, links = split_links_by_github(all_links)
+            summaries_and_categories = summarise_and_categorize_websites(all_links)
+            
+            for url, r in summaries_and_categories.items():
+                points = fetch_hn_points(url)
+                r["hn_points"] = points
 
-            results_default = {}
-            results_github = {}
-            if links:
-                results_default = summarise_and_categorize_websites(links)
-            if github_links:
-                results_github = summarise_websites(github_links)
-
-            summaries_and_categories = {**results_default, **results_github}
 
             if not summaries_and_categories:
                 print("Es konnten keine Zusammenfassungen erstellt werden.")
