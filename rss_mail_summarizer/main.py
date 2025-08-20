@@ -56,6 +56,7 @@ def main(request=None):
                         summary=result.get("summary"),
                         subcategory=result.get("subcategory"),
                         reading_time=result.get("reading_time"),
+                        hn_points=result.get("hn_points"),
                         mail_sent=False  # Wichtig: explizit False setzen
                     )
 

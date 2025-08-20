@@ -63,6 +63,7 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
         subcategory = details.get("subcategory") or "No Subcategory"
         summary = details.get("summary", "n/a")
         reading_time = details.get("reading_time", "n/a")
+        hn_points = details.get("hn_points", "n/a")
 
         if category not in categorized_entries:
             categorized_entries[category] = {}
