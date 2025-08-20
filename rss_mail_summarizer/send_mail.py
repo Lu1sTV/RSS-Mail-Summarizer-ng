@@ -81,12 +81,12 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
 
             for subcategory, articles in subcategories.items():
                 if subcategory == "No Subcategory":
-                    for summary, url, reading_time in articles:
-                        file.write(f"- {summary} [(read in {reading_time} min)]({url})\n")
+                    for summary, url, reading_time, hn_points in articles:
+                        file.write(f"- {summary} [(read in {reading_time} min)] [(Popularity:{hn_points} points)]({url})\n")
                 else:
                     file.write(f"### {subcategory}\n\n")
-                    for summary, url, reading_time in articles:
-                        file.write(f"- {summary} [(read in {reading_time} min)]({url})\n")
+                    for summary, url, reading_time, hn_points in articles:
+                        file.write(f"- {summary} [(read in {reading_time} min)] [(Popularity:{hn_points} points)]({url})\n")
 
             file.write("\n")
 
