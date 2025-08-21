@@ -5,6 +5,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 import base64
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
+import re
 
 """
 Lokaler Start:
@@ -19,7 +20,7 @@ Cloud Run:
 """
 
 # --- Konfiguration ---
-SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 CREDENTIALS_DIR = "credentials"
 CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
@@ -46,25 +47,25 @@ def get_gmail_service():
 
     return build("gmail", "v1", credentials=creds)
 
-# def list_google_alerts():
-#     """
-#     Ruft Google Alerts E-Mails ab und gibt Snippets aus.
-#     """
-#     service = get_gmail_service()
-#     results = service.users().messages().list(
-#         userId="me",
-#         q="from:googlealerts-noreply@google.com"
-#     ).execute()
-#
-#     messages = results.get("messages", [])
-#     print(f"{len(messages)} Nachrichten gefunden.")
-#
-#     for m in messages:
-#         msg = service.users().messages().get(userId="me", id=m["id"]).execute()
-#         print(f"- {msg['snippet']}")
 
+def filter_links(links):
+    """
+    Filtert Links heraus, die unerwünschte Muster enthalten.
+    Nur Links, die NICHT auf die Blacklist passen, werden zurückgegeben.
+    """
+    blacklist_patterns = [
+        r"alerts/feedback",
+        r"alerts/remove",
+        r"alerts/edit",
+        r"alerts\?s"
+    ]
 
+    filtered = []
+    for link in links:
+        if not any(re.search(pattern, link) for pattern in blacklist_patterns):
+            filtered.append(link)
 
+    return filtered
 
 def get_label_id(service, label_name):
     """Holt die Gmail Label-ID anhand des Label-Namens"""
@@ -89,6 +90,8 @@ def list_google_alerts():
         if not alerts_label_id or not processed_label_id:
             raise ValueError("Label 'alerts' oder 'alerts-processed' existiert nicht.")
 
+        print(f"Labels gefunden: alerts={alerts_label_id}, alerts-processed={processed_label_id}")
+
         # Mails mit Label 'alerts' abrufen
         results = service.users().messages().list(
             userId="me",
@@ -96,6 +99,7 @@ def list_google_alerts():
         ).execute()
 
         messages = results.get("messages", [])
+        print(f"{len(messages)} Nachrichten mit Label 'alerts' gefunden.")
 
         for m in messages:
             msg = service.users().messages().get(
@@ -114,8 +118,10 @@ def list_google_alerts():
 
             # URLs aus HTML href-Attributen extrahieren
             soup = BeautifulSoup(body_html, "html.parser")
-            for a_tag in soup.find_all("a", href=True):
-                found_urls.append(a_tag["href"])
+            links_in_mail = [a_tag["href"] for a_tag in soup.find_all("a", href=True)]
+            print(f"  → {len(links_in_mail)} Links gefunden.")
+
+            found_urls.extend(links_in_mail)
 
             # Mail als 'alerts-processed' markieren
             service.users().messages().modify(
@@ -126,9 +132,12 @@ def list_google_alerts():
                     "removeLabelIds": [alerts_label_id]
                 }
             ).execute()
+            print("  → Label geändert (alerts → alerts-processed)")
 
         # Duplikate entfernen
-        return list(set(found_urls))
+        unique_urls = list(set(found_urls))
+        print(f"Gesamt {len(unique_urls)} eindeutige Links extrahiert.")
+        return unique_urls
 
     except HttpError as error:
         print(f"Ein Fehler ist aufgetreten: {error}")
@@ -136,8 +145,12 @@ def list_google_alerts():
 
 
 
+
 urls = list_google_alerts()
-for url in urls:
+filtered_urls = filter_links(urls)
+for url in filtered_urls:
     print(url)
+
+print(len(urls))
 
 
