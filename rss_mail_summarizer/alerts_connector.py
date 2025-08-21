@@ -19,11 +19,20 @@ Cloud Run:
 3. Skript funktioniert ohne Änderungen.
 """
 
+
+
 # --- Konfiguration ---
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 CREDENTIALS_DIR = "credentials"
 CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
+
+# Wichtig:
+# labels in gmail müssen mit den Einträgen in dieser Map 1 zu 1 übereinstimmen.
+# es muss ein filter in gmail erstellt werden, der alle eingehenden alert mails zum jeweiligen label hinzufügt
+alert_map = {
+    "Carlo Masala": ("alerts-carlo-masala", "alerts-carlo-masala-processed"),
+}
 
 def get_gmail_service():
     """
@@ -75,82 +84,91 @@ def get_label_id(service, label_name):
             return label["id"]
     return None
 
+
+
 def list_google_alerts():
     """
-    Ruft alle Mails mit dem Label 'alerts' ab, extrahiert URLs aus HTML,
-    markiert sie als 'alerts-processed' und gibt eine Liste aller URLs zurück.
+    Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
+    markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück.
     """
     service = get_gmail_service()
-    found_urls = []
+    all_urls = {}
 
     try:
-        # Label-IDs abrufen
-        alerts_label_id = get_label_id(service, "alerts")
-        processed_label_id = get_label_id(service, "alerts-processed")
-        if not alerts_label_id or not processed_label_id:
-            raise ValueError("Label 'alerts' oder 'alerts-processed' existiert nicht.")
+        for alias, (label_name, processed_label_name) in alert_map.items():
+            found_urls = []
 
-        print(f"Labels gefunden: alerts={alerts_label_id}, alerts-processed={processed_label_id}")
+            # Label-IDs abrufen
+            label_id = get_label_id(service, label_name)
+            processed_label_id = get_label_id(service, processed_label_name)
+            if not label_id or not processed_label_id:
+                print(f"Label '{label_name}' oder '{processed_label_name}' existiert nicht. Überspringe {alias}.")
+                continue
 
-        # Mails mit Label 'alerts' abrufen
-        results = service.users().messages().list(
-            userId="me",
-            labelIds=[alerts_label_id]
-        ).execute()
 
-        messages = results.get("messages", [])
-        print(f"{len(messages)} Nachrichten mit Label 'alerts' gefunden.")
-
-        for m in messages:
-            msg = service.users().messages().get(
+            # Mails mit Label abrufen
+            results = service.users().messages().list(
                 userId="me",
-                id=m["id"],
-                format="full"
+                labelIds=[label_id]
             ).execute()
 
-            body_html = ""
-            if "parts" in msg["payload"]:
-                for part in msg["payload"]["parts"]:
-                    if part.get("mimeType") == "text/html":
-                        data = part["body"].get("data")
-                        if data:
-                            body_html += base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
+            messages = results.get("messages", [])
+            print(f"[{alias}] {len(messages)} Nachrichten gefunden.")
 
-            # URLs aus HTML href-Attributen extrahieren
-            soup = BeautifulSoup(body_html, "html.parser")
-            links_in_mail = [a_tag["href"] for a_tag in soup.find_all("a", href=True)]
-            print(f"  → {len(links_in_mail)} Links gefunden.")
+            for m in messages:
+                msg = service.users().messages().get(
+                    userId="me",
+                    id=m["id"],
+                    format="full"
+                ).execute()
 
-            found_urls.extend(links_in_mail)
+                body_html = ""
+                if "parts" in msg["payload"]:
+                    for part in msg["payload"]["parts"]:
+                        if part.get("mimeType") == "text/html":
+                            data = part["body"].get("data")
+                            if data:
+                                body_html += base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
 
-            # Mail als 'alerts-processed' markieren
-            service.users().messages().modify(
-                userId="me",
-                id=m["id"],
-                body={
-                    "addLabelIds": [processed_label_id],
-                    "removeLabelIds": [alerts_label_id]
-                }
-            ).execute()
-            print("  → Label geändert (alerts → alerts-processed)")
+                # URLs aus HTML href-Attributen extrahieren
+                soup = BeautifulSoup(body_html, "html.parser")
+                links_in_mail = [a_tag["href"] for a_tag in soup.find_all("a", href=True)]
+                print(f"→ {len(links_in_mail)} Links gefunden.")
 
-        # Duplikate entfernen
-        unique_urls = list(set(found_urls))
-        print(f"Gesamt {len(unique_urls)} eindeutige Links extrahiert.")
-        return unique_urls
+                found_urls.extend(links_in_mail)
+
+                # Mail als 'processed' markieren
+                service.users().messages().modify(
+                    userId="me",
+                    id=m["id"],
+                    body={
+                        "addLabelIds": [processed_label_id],
+                        "removeLabelIds": [label_id]
+                    }
+                ).execute()
+                print(f"[{alias}] → Label geändert ({label_name} → {processed_label_name})")
+
+            # Duplikate entfernen
+            all_urls[alias] = list(set(found_urls))
+            print(f"[{alias}] Gesamt {len(all_urls[alias])} eindeutige Links extrahiert.\n")
+
+        return all_urls
 
     except HttpError as error:
         print(f"Ein Fehler ist aufgetreten: {error}")
-        return []
+        return {}
 
 
 
 
-urls = list_google_alerts()
-filtered_urls = filter_links(urls)
-for url in filtered_urls:
-    print(url)
+all_urls = list_google_alerts()
 
-print(len(urls))
+# Gefilterte Links ausgeben
+for alias, urls in all_urls.items():
+    filtered_urls = filter_links(urls)
+    print(f"--- {alias} ---")
+    for url in filtered_urls:
+        print(url)
+    print(f"Anzahl Links: {len(filtered_urls)}\n")
 
 

@@ -123,6 +123,20 @@ def add_url_to_website_collection(url):
         print(f"URL bereits vorhanden (wird ignoriert): {url}")
 
 
+def add_alert_to_website_collection(url):
+    doc_ref = db.collection("website").document(safe_url(url))
+    doc = doc_ref.get()
+    if not doc.exists:
+        doc_ref.set({
+            "url": url,
+            "alert": True,
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        })
+        print(f"Neue URL gespeichert: {url}")
+    else:
+        print(f"URL bereits vorhanden (wird ignoriert): {url}")
+
+
 # holt nur unverarbeitete einträge aus der datenbank
 def get_unprocessed_urls():
     docs = db.collection("website").where("processed", "==", False).stream()

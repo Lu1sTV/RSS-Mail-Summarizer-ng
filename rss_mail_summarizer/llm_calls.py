@@ -35,6 +35,11 @@ def summarise_websites(links_list):
     prompt = build_prompt(links_list, mode="github")
     return process_llm_response(prompt)
 
+def summarise_alert(links_list):
+    prompt = build_prompt(links_list, mode="alert")
+    return process_llm_response(prompt)
+
+
 
 def build_prompt(links_list, mode="default"):
     combined_input = "\n\n".join(
