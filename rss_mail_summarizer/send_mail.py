@@ -55,15 +55,20 @@ def send_mail(sender_email, sender_password, recipient_email, subject=None, mail
 def create_markdown_report(summaries_and_categories, markdown_report_path):
     """
     Erstellt eine Markdown-Datei mit allen neuen Artikeln, geordnet nach Kategorien und Subkategorien.
+    Robust gegen fehlende Felder.
     """
     categorized_entries = {}
 
     for url, details in summaries_and_categories.items():
-        category = details.get("category", "n/a")
+        category = details.get("category") or "n/a"
         subcategory = details.get("subcategory") or "No Subcategory"
-        summary = details.get("summary", "n/a")
-        reading_time = details.get("reading_time", "n/a")
-        hn_points = details.get("hn_points", "n/a")
+        summary = details.get("summary") or "n/a"
+        reading_time = details.get("reading_time")
+        hn_points = details.get("hn_points")
+
+        # Konvertiere None zu "n/a" für die Markdown-Ausgabe
+        reading_time_str = str(reading_time) if reading_time is not None else "n/a"
+        hn_points_str = str(hn_points) if hn_points is not None else "n/a"
 
         if category not in categorized_entries:
             categorized_entries[category] = {}
@@ -71,24 +76,25 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
         if subcategory not in categorized_entries[category]:
             categorized_entries[category][subcategory] = []
 
-        categorized_entries[category][subcategory].append((summary, url, reading_time))
+        categorized_entries[category][subcategory].append(
+            (summary, url, reading_time_str, hn_points_str)
+        )
 
-    with open(markdown_report_path, "w") as file:
+    with open(markdown_report_path, "w", encoding="utf-8") as file:
         file.write("# News of the Day\n\n")
 
         for category, subcategories in categorized_entries.items():
             file.write(f"## {category}\n\n")
 
             for subcategory, articles in subcategories.items():
-                if subcategory == "No Subcategory":
-                    for summary, url, reading_time, hn_points in articles:
-                        file.write(f"- {summary} [(read in {reading_time} min)] [(Popularity:{hn_points} points)]({url})\n")
-                else:
+                if subcategory != "No Subcategory":
                     file.write(f"### {subcategory}\n\n")
-                    for summary, url, reading_time, hn_points in articles:
-                        file.write(f"- {summary} [(read in {reading_time} min)] [(Popularity:{hn_points} points)]({url})\n")
+
+                for summary, url, reading_time_str, hn_points_str in articles:
+                    file.write(f"- {summary} [(read in {reading_time_str} min)] [(Popularity: {hn_points_str} points)]({url})\n")
 
             file.write("\n")
+
 
 
 
