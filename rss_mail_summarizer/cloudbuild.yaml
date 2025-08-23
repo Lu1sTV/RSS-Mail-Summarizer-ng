@@ -2,14 +2,14 @@ steps:
   # Install deps
   - name: 'python:3.11'
     entrypoint: pip
-    args: ['install', '-r', 'requirements.txt', '--target', '/workspace']
-
+    args: ['install', '-r', '/workspace/rss-mail-summarizer/requirements.txt', '--target', '/workspace']
+  
   # Test mastodon_connector_activate locally inside build
   - name: 'python:3.11'
     entrypoint: python
     args: ['-c', 'import main; main.mastodon_connector_activate()']
     env:
-      - 'PYTHONPATH=/workspace'
+      - 'PYTHONPATH=/workspace:/workspace/rss-mail-summarizer'
       - 'PROJECT_ID=dhbw-projekt-467419'
 
   # Test rss_mail_summarizer_main locally inside build
@@ -17,7 +17,7 @@ steps:
     entrypoint: python
     args: ['-c', 'import main; main.main()']
     env:
-      - 'PYTHONPATH=/workspace'
+      - 'PYTHONPATH=/workspace:/workspace/rss-mail-summarizer'
       - 'PROJECT_ID=dhbw-projekt-467419'
 
   # Deploy mastodon_connector
@@ -30,7 +30,7 @@ steps:
       - --gen2
       - --runtime=python311
       - --region=europe-west3
-      - --source=./rss-mail-summarizer
+      - --source=/workspace/rss-mail-summarizer
       - --entry-point=mastodon_connector_activate
       - --trigger-http
       - --allow-unauthenticated
@@ -49,7 +49,7 @@ steps:
       - --gen2
       - --runtime=python311
       - --region=europe-west3
-      - --source=./rss-mail-summarizer
+      - --source=/workspace/rss-mail-summarizer
       - --entry-point=main
       - --trigger-http
       - --allow-unauthenticated
