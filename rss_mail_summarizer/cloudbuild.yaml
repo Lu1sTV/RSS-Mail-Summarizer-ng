@@ -1,44 +1,62 @@
 steps:
-- name: 'gcr.io/cloud-builders/gcloud'
-  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
-  entrypoint: 'bash'
-  args:
-    - '-c'
-    - |
-      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
-      echo "Wrote secret to serviceAccountKey.json"
-      gcloud functions deploy mastodon_connector \
-        --entry-point=mastodon_connector_activate \
-        --runtime=python311 \
-        --trigger-http \
-        --allow-unauthenticated \
-        --source=./rss_mail_summarizer \
-        --region=europe-west3 \
-        --memory=2GiB \
-        --timeout=120s
+  # Install deps
+  - name: 'python:3.11'
+    entrypoint: pip
+    args: ['install', '-r', 'requirements.txt', '--target', '/workspace']
 
-- name: 'gcr.io/cloud-builders/gcloud'
-  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
-  entrypoint: 'bash'
-  args:
-    - '-c'
-    - |
-      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
-      echo "Wrote secret to serviceAccountKey.json"
-      gcloud functions deploy rss_mail_summarizer_main \
-        --entry-point=main \
-        --runtime=python311 \
-        --trigger-http \
-        --allow-unauthenticated \
-        --source=./rss_mail_summarizer \
-        --region=europe-west3 \
-        --memory=2GiB \
-        --timeout=120s
+  # Test mastodon_connector_activate locally inside build
+  - name: 'python:3.11'
+    entrypoint: python
+    args: ['-c', 'import main; main.mastodon_connector_activate()']
+    env:
+      - 'PYTHONPATH=/workspace'
+      - 'PROJECT_ID=dhbw-projekt-467419'
 
-availableSecrets:
-  secretManager:
-  - versionName: projects/dhbw-projekt-467419/secrets/rss-firebase-key/versions/latest
-    env: '_SERVICE_ACCOUNT_KEY_JSON'
+  # Test rss_mail_summarizer_main locally inside build
+  - name: 'python:3.11'
+    entrypoint: python
+    args: ['-c', 'import main; main.main()']
+    env:
+      - 'PYTHONPATH=/workspace'
+      - 'PROJECT_ID=dhbw-projekt-467419'
+
+  # Deploy mastodon_connector
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - mastodon_connector
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=.
+      - --entry-point=mastodon_connector_activate
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --set-env-vars
+      - PROJECT_ID=dhbw-projekt-467419
+
+  # Deploy rss_mail_summarizer_main
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - rss_mail_summarizer_main
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=.
+      - --entry-point=main
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --set-env-vars
+      - PROJECT_ID=dhbw-projekt-467419
 
 options:
   logging: CLOUD_LOGGING_ONLY
