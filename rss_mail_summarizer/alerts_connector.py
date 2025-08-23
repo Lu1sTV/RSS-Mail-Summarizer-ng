@@ -6,6 +6,7 @@ import base64
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
 import re
+from google.cloud import secretmanager
 
 """
 Lokaler Start:
@@ -26,6 +27,63 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 CREDENTIALS_DIR = "credentials"
 CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
+
+# Secret names in Google Secret Manager
+SECRET_CREDENTIALS = "credentials-credentials-json"
+SECRET_TOKEN = "credentials-token-json"
+
+def get_secret(secret_name):
+    """Fetches a secret from Google Secret Manager (latest version)."""
+    client = secretmanager.SecretManagerServiceClient()
+    project_id = os.getenv("PROJECT_ID")
+    name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode("utf-8")
+
+def ensure_credentials_files():
+    """
+    Ensures credentials.json and token.json exist.
+    - Local: uses local files in ./credentials
+    - Cloud: writes them from Google Secret Manager to ./credentials
+    """
+    os.makedirs(CREDENTIALS_DIR, exist_ok=True)
+
+    # If running in Cloud (detected by env var), fetch from Secret Manager
+    if os.getenv("K_SERVICE") or os.getenv("FUNCTION_TARGET"):  # Cloud Run / Cloud Functions
+        if not os.path.exists(CREDENTIALS_FILE):
+            creds_data = get_secret(SECRET_CREDENTIALS)
+            with open(CREDENTIALS_FILE, "w") as f:
+                f.write(creds_data)
+
+        if not os.path.exists(TOKEN_FILE):
+            token_data = get_secret(SECRET_TOKEN)
+            with open(TOKEN_FILE, "w") as f:
+                f.write(token_data)
+
+    else:
+        # Local mode: check that files exist
+        if not os.path.exists(CREDENTIALS_FILE):
+            raise FileNotFoundError(f"{CREDENTIALS_FILE} fehlt. Bitte lokal erstellen.")
+        if not os.path.exists(TOKEN_FILE):
+            print(f"Warnung: {TOKEN_FILE} fehlt – es wird beim ersten Login erstellt.")
+
+
+def get_gmail_service():
+    """Erstellt den Gmail API Service."""
+    ensure_credentials_files()
+
+    creds = None
+    if os.path.exists(TOKEN_FILE):
+        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
+    else:
+        flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
+        creds = flow.run_local_server(port=0)
+
+        # Token speichern
+        with open(TOKEN_FILE, "w") as token:
+            token.write(creds.to_json())
+
+    return build("gmail", "v1", credentials=creds)
 
 # Wichtig:
 # labels in gmail müssen mit den Einträgen in dieser Map 1 zu 1 übereinstimmen.
