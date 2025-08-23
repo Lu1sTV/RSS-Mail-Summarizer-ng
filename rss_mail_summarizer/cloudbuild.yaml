@@ -30,7 +30,7 @@ steps:
       - --gen2
       - --runtime=python311
       - --region=europe-west3
-      - --source=.
+      - --source=./rss-mail-summarizer
       - --entry-point=mastodon_connector_activate
       - --trigger-http
       - --allow-unauthenticated
@@ -49,7 +49,7 @@ steps:
       - --gen2
       - --runtime=python311
       - --region=europe-west3
-      - --source=.
+      - --source=./rss-mail-summarizer
       - --entry-point=main
       - --trigger-http
       - --allow-unauthenticated
