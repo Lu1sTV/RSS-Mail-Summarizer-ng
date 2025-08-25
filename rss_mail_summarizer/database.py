@@ -1,6 +1,7 @@
 from datetime import datetime
 import os
 import json
+from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
 from sentence_transformers import SentenceTransformer
@@ -8,21 +9,33 @@ from sentence_transformers import SentenceTransformer
 # -- embedding model --
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
+#google secret einholen wenn in google ausgeführt
+def access_secret(secret_id: str, project_id: str):
+    """Fetch secret from Secret Manager."""
+    client = secretmanager.SecretManagerServiceClient()
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode("UTF-8")
+
 # Service Account Schlüssel laden 
 # Unterscheidung für lokale Ausführung und über Cloud Console
 def initialize_firebase():
-    service_account_key = os.environ.get("_SERVICE_ACCOUNT_KEY_JSON")
+    project_id = os.environ["PROJECT_ID"]
+    secret_id = "rss-firebase-key" 
 
-    if service_account_key:
-        print("Initializing Firebase with secret from environment variable _SERVICE_ACCOUNT_KEY_JSON")
-        # The secret is expected as JSON string, so parse it
+    try:
+        # Wenn in Google:
+        service_account_key = access_secret(secret_id, project_id)
+        print("Initializing Firebase with secret from Secret Manager")
         service_account_info = json.loads(service_account_key)
         cred = credentials.Certificate(service_account_info)
-    else:
-        print("Initializing Firebase with local serviceAccountKey.json file")
+    except Exception as e:
+        #wenn lokale Ausführung
+        print(f"Falling back to local serviceAccountKey.json file. Reason: {e}")
         cred = credentials.Certificate("serviceAccountKey.json")
 
-    initialize_app(cred)
+    if not firebase_admin._apps:
+        initialize_app(cred)
 
 initialize_firebase()
 

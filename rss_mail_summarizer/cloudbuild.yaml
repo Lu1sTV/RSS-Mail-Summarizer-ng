@@ -1,44 +1,46 @@
 steps:
-- name: 'gcr.io/cloud-builders/gcloud'
-  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
-  entrypoint: 'bash'
-  args:
-    - '-c'
-    - |
-      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
-      echo "Wrote secret to serviceAccountKey.json"
-      gcloud functions deploy mastodon_connector \
-        --entry-point=mastodon_connector_activate \
-        --runtime=python311 \
-        --trigger-http \
-        --allow-unauthenticated \
-        --source=./rss_mail_summarizer \
-        --region=europe-west3 \
-        --memory=2GiB \
-        --timeout=120s
+  # Install deps (optional but useful to validate requirements)
+  - name: 'python:3.11'
+    entrypoint: pip
+    args: ['install', '-r', 'rss_mail_summarizer/requirements.txt', '--target', '/workspace']
 
-- name: 'gcr.io/cloud-builders/gcloud'
-  secretEnv: ['_SERVICE_ACCOUNT_KEY_JSON']
-  entrypoint: 'bash'
-  args:
-    - '-c'
-    - |
-      echo "$_SERVICE_ACCOUNT_KEY_JSON" > ./rss_mail_summarizer/serviceAccountKey.json
-      echo "Wrote secret to serviceAccountKey.json"
-      gcloud functions deploy rss_mail_summarizer_main \
-        --entry-point=main \
-        --runtime=python311 \
-        --trigger-http \
-        --allow-unauthenticated \
-        --source=./rss_mail_summarizer \
-        --region=europe-west3 \
-        --memory=2GiB \
-        --timeout=120s
+  # Deploy mastodon_connector function
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - mastodon_connector
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=./rss_mail_summarizer
+      - --entry-point=mastodon_connector_activate
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --set-env-vars
+      - PROJECT_ID=dhbw-projekt-467419
 
-availableSecrets:
-  secretManager:
-  - versionName: projects/dhbw-projekt-467419/secrets/rss-firebase-key/versions/latest
-    env: '_SERVICE_ACCOUNT_KEY_JSON'
+  # Deploy rss_mail_summarizer_main function
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - rss_mail_summarizer_main
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=./rss_mail_summarizer
+      - --entry-point=main
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --set-env-vars
+      - PROJECT_ID=dhbw-projekt-467419
 
 options:
   logging: CLOUD_LOGGING_ONLY
