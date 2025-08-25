@@ -6,6 +6,7 @@ import base64
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
 import re
+from database import add_alert_to_website_collection
 
 """
 Lokaler Start:
@@ -85,11 +86,11 @@ def get_label_id(service, label_name):
     return None
 
 
-
 def list_google_alerts():
     """
     Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
-    markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück.
+    markiert sie als 'processed', speichert sie in der DB und gibt eine Map
+    mit allen URLs pro Alert zurück.
     """
     service = get_gmail_service()
     all_urls = {}
@@ -104,7 +105,6 @@ def list_google_alerts():
             if not label_id or not processed_label_id:
                 print(f"Label '{label_name}' oder '{processed_label_name}' existiert nicht. Überspringe {alias}.")
                 continue
-
 
             # Mails mit Label abrufen
             results = service.users().messages().list(
@@ -133,7 +133,11 @@ def list_google_alerts():
                 # URLs aus HTML href-Attributen extrahieren
                 soup = BeautifulSoup(body_html, "html.parser")
                 links_in_mail = [a_tag["href"] for a_tag in soup.find_all("a", href=True)]
-                print(f"→ {len(links_in_mail)} Links gefunden.")
+                print(f"[{alias}] → {len(links_in_mail)} Links gefunden.")
+
+                # URLs in DB speichern
+                for url in links_in_mail:
+                    add_alert_to_website_collection(url, category=alias)
 
                 found_urls.extend(links_in_mail)
 
@@ -162,13 +166,8 @@ def list_google_alerts():
 
 
 all_urls = list_google_alerts()
-
-# Gefilterte Links ausgeben
-for alias, urls in all_urls.items():
-    filtered_urls = filter_links(urls)
-    print(f"--- {alias} ---")
-    for url in filtered_urls:
-        print(url)
-    print(f"Anzahl Links: {len(filtered_urls)}\n")
+#
+# for label, url in all_urls.items():
+#     print(url)
 
 

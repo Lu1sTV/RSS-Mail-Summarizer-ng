@@ -35,10 +35,6 @@ def summarise_websites(links_list):
     prompt = build_prompt(links_list, mode="github")
     return process_llm_response(prompt)
 
-def summarise_alert(links_list):
-    prompt = build_prompt(links_list, mode="alert")
-    return process_llm_response(prompt)
-
 
 
 def build_prompt(links_list, mode="default"):
@@ -184,5 +180,104 @@ def process_llm_response(prompt):
                     results[url]["subcategory"] = topic
 
     return results
+
+
+
+#####################################################
+
+
+def summarise_alerts(alerts_dict):
+    """
+    alerts_dict: Dictionary {label: [urls]}
+    Gibt zurück: Dictionary {url: {"summary": ..., "reading_time": ...}}
+    """
+    all_results = {}
+
+    for label, urls in alerts_dict.items():
+        combined_input = "\n".join(f"{url}" for url in urls)
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", f"""
+            You are an assistant that summarizes multiple URLs for the alert '{label}'.
+            For each URL, provide:
+            1. Summary (2-3 sentences)
+            2. Estimated reading time in minutes
+
+            If you cannot access the website, return:
+            "Website content could not be reached!"
+
+            Format your response as follows:
+            <URL>:
+            Summary: <summary>
+            Reading Time: <X> minutes
+            """),
+            ("human", combined_input)
+        ])
+
+        # Ergebnis für alle URLs des Labels abrufen
+        result = process_alert_response(prompt, urls)
+        # result sollte {url: {"summary": ..., "reading_time": ...}} sein
+        all_results.update(result)
+
+    return all_results
+
+
+def build_alert_prompt(alerts_dict):
+    """
+    alerts_dict: Dictionary {label+url: url} für den Prompt
+    """
+    combined_input = "\n\n".join(
+        f"{label} (URL: {url})"
+        for label, url in alerts_dict.items()
+    )
+
+    prompt = ChatPromptTemplate.from_messages([
+        ("system", """
+        You are an assistant that processes multiple URLs provided by the user.
+        For each input, perform the following tasks:
+
+        1. Summarize the content of the website in 2-3 sentences.
+        2. Estimate the reading time of the article in minutes based on length and complexity.
+
+        If you are unable to access the website, return "Website content could not be reached!".
+
+        Format your response as follows:
+        Alert1 (URL: <url>):
+        Summary: <summary>
+        Reading Time: <X> minutes
+
+        Alert2 (URL: <url>):
+        Summary: <summary>
+        Reading Time: <X> minutes
+
+        ...
+        """),
+        ("human", combined_input)
+    ])
+    return prompt
+
+
+def process_alert_response(prompt, urls):
+    chain = prompt | llm
+    response = chain.invoke({}).content
+
+    with open("alert_llm_response.txt", "w", encoding="utf-8") as f:
+        f.write(response)
+
+    results = {}
+    for entry in response.split("\n\n"):
+        # URL aus dem Entry extrahieren
+        url_match = re.search(r"(https?://\S+)", entry)
+        summary_match = re.search(r"Summary:\s*(.+)", entry, re.IGNORECASE)
+        reading_time_match = re.search(r"Reading\s*Time:\s*(\d+)\s*minute[s]?", entry, re.IGNORECASE)
+
+        if url_match:
+            url = url_match.group(1)
+            results[url] = {
+                "summary": summary_match.group(1).strip() if summary_match else None,
+                "reading_time": int(reading_time_match.group(1)) if reading_time_match else None
+            }
+
+    return results
+
 
 

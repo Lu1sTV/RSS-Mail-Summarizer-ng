@@ -36,23 +36,47 @@ def safe_url(url):
     return safe_url
 
 
-def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False,  hn_points=None):
+# def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False,  hn_points=None):
+#     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+#     vector_embedding = model.encode(summary).tolist()
+#
+#     db.collection("website").document(safe_url(url)).update({
+#         "category": category,
+#         "summary": summary,
+#         "subcategory": subcategory,
+#         "mail_sent": mail_sent,
+#         "vector_embedding": vector_embedding,
+#         "processed": True,
+#         "timestamp": timestamp,
+#         "reading_time": reading_time,
+#         "hn_points": hn_points
+#     })
+#
+#     print(f"Datensatz aktualisiert: {url}")
+
+
+# neue flexiblere Funktion (muss noch ausgiebig getestet werden
+def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None, mail_sent=False, hn_points=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-    vector_embedding = model.encode(summary).tolist()
+    update_data = {"processed": True, "timestamp": timestamp, "url": url}  # URL hier hinzufügen
 
-    db.collection("website").document(safe_url(url)).update({
-        "category": category,
-        "summary": summary,
-        "subcategory": subcategory,
-        "mail_sent": mail_sent,
-        "vector_embedding": vector_embedding,
-        "processed": True,
-        "timestamp": timestamp,
-        "reading_time": reading_time,
-        "hn_points": hn_points
-    })
+    if category is not None:
+        update_data["category"] = category
+    if summary is not None:
+        update_data["summary"] = summary
+    if reading_time is not None:
+        update_data["reading_time"] = reading_time
+    if subcategory is not None:
+        update_data["subcategory"] = subcategory
+    if mail_sent is not None:
+        update_data["mail_sent"] = mail_sent
+    if hn_points is not None:
+        update_data["hn_points"] = hn_points
 
-    print(f"Datensatz aktualisiert: {url}")
+    db.collection("website").document(safe_url(url)).set(update_data, merge=True)
+    print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
+
+
 
 
 
@@ -68,16 +92,24 @@ from datetime import datetime, timedelta
 # database.py
 def get_unsent_entries():
     print("[INFO] Lade Einträge aus Firestore mit mail_sent=False ...")
-    query = db.collection('website').where('mail_sent', '==', False).stream()
+    try:
+        query = db.collection('website').where('mail_sent', '==', False).stream()
+    except Exception as e:
+        print(f"[ERROR] Fehler beim Abrufen der Einträge: {e}")
+        return []
 
     entries = []
     for doc in query:
-        # doc ist DocumentSnapshot; to_dict() gibt das Feldmapping
         data = doc.to_dict() or {}
+        url = data.get("url")
+
+        if not url or not isinstance(url, str):
+            print(f"[WARN] Überspringe Eintrag ohne gültige URL: {data}")
+            continue
 
         entry = {
             "doc_id": doc.id,                       # nützlich, um später gezielt zu markieren
-            "url": data.get("url"),
+            "url": url,
             "category": data.get("category"),
             "summary": data.get("summary"),
             "subcategory": data.get("subcategory"),
@@ -94,13 +126,11 @@ def get_unsent_entries():
 
 
 def mark_as_sent(entries):
-    """
-    Markiert eine Liste von Artikeln (Dictionaries) in der Datenbank als gesendet.
-    """
     for entry in entries:
-        # Greife auf die URL über den Dictionary-Schlüssel 'url' zu
-        url = entry['url']
-        # Angenommen, du hast eine Funktion safe_url, die den Firestore-Dokumentnamen sicherstellt
+        url = entry.get("url")
+        if not url:
+            print(f"[WARN] Kein URL-Feld für Eintrag: {entry}")
+            continue  # Überspringe diesen Eintrag
         db.collection('website').document(safe_url(url)).update({'mail_sent': True})
 
     print(f"{len(entries)} Einträge wurden als gesendet markiert.")
@@ -123,24 +153,47 @@ def add_url_to_website_collection(url):
         print(f"URL bereits vorhanden (wird ignoriert): {url}")
 
 
-def add_alert_to_website_collection(url):
+def add_alert_to_website_collection(url, category):
+    """
+    Speichert eine neue URL in der 'website'-Collection der Firestore-Datenbank, falls sie noch nicht existiert.
+    """
     doc_ref = db.collection("website").document(safe_url(url))
     doc = doc_ref.get()
     if not doc.exists:
         doc_ref.set({
             "url": url,
             "alert": True,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+            "category": category,
+            "processed": False
         })
-        print(f"Neue URL gespeichert: {url}")
+        print(f"Neue URL gespeichert: {url} (Kategorie: {category})")
     else:
         print(f"URL bereits vorhanden (wird ignoriert): {url}")
 
 
 # holt nur unverarbeitete einträge aus der datenbank
+# def get_unprocessed_urls():
+#     docs = db.collection("website").where("processed", "==", False).stream()
+#     return [doc.to_dict()["url"] for doc in docs]
+
 def get_unprocessed_urls():
-    docs = db.collection("website").where("processed", "==", False).stream()
-    return [doc.to_dict()["url"] for doc in docs]
+    """
+    Gibt eine Liste von Dictionaries zurück:
+    [
+        {"url": "https://example.com", "alert": False},
+        {"url": "https://alert.com", "alert": True}
+    ]
+    """
+    # Beispiel: Datenbank-Abfrage
+    urls = []
+    for doc in db.collection("website").where("processed", "==", False).stream():
+        data = doc.to_dict()
+        urls.append({
+            "url": data.get("url"),
+            "alert": data.get("alert", False)  # Standard False
+        })
+    return urls
 
 
 def mark_unsent_as_sent():
@@ -156,5 +209,11 @@ def mark_unsent_as_sent():
 
     print(f"[INFO] mail_sent für {count} Einträge (mail_sent=False) auf True gesetzt.")
 
+def is_alert(url):
+    doc_ref = db.collection("website").document(safe_url(url)).get()
+    if doc_ref.exists:
+        data = doc_ref.to_dict()
+        return data.get("alert", False)
+    return False
 
 # mark_unsent_as_sent()

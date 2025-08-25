@@ -10,6 +10,7 @@ STATE_FILE = "last_toot_id.txt"
 
 def fetch_and_store_mastodon_links():
     start_time = time.time()
+    print("-- starting mastodon connector")
     mastodon = Mastodon(api_base_url=MASTODON_INSTANCE_URL)
 
     try:
@@ -79,6 +80,6 @@ def fetch_and_store_mastodon_links():
 
     finally:
         duration = time.time() - start_time
-        print(f"Mastodon-Connector dauerte {duration:.2f} Sekunden.")
+        print(f"-- mastodon-connector dauerte {duration:.2f} Sekunden.")
 
 fetch_and_store_mastodon_links()

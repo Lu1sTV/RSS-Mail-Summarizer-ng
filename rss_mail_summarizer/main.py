@@ -4,10 +4,10 @@ import os
 import time
 import traceback
 
-from llm_calls import summarise_and_categorize_websites, summarise_websites
+from llm_calls import summarise_and_categorize_websites, summarise_alerts
 from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
-from database import add_datarecord, is_duplicate_url
+from database import add_datarecord, is_duplicate_url, is_alert
 import functions_framework
 from database import get_unprocessed_urls
 from utils.split_links import split_links_by_github
@@ -36,20 +36,13 @@ def main(request=None):
         else:
             print(f"{len(all_links)} neue Links in der Datenbank gefunden")
 
-            summaries_and_categories = summarise_and_categorize_websites(all_links)
-            
-            for url, r in summaries_and_categories.items():
-                points = fetch_hn_points(url)
-                r["hn_points"] = points
-
-
-            if not summaries_and_categories:
-                print("Es konnten keine Zusammenfassungen erstellt werden.")
-            else:
-                print("Alle Links erfolgreich verarbeitet und gespeichert.")
-
-                # Ergebnisse in DB schreiben, mail_sent = false
+            # 🔹 Normale Links (ohne alert)
+            normal_links = [link["url"] for link in all_links if not link.get("alert")]
+            if normal_links:
+                summaries_and_categories = summarise_and_categorize_websites(normal_links)
                 for url, result in summaries_and_categories.items():
+                    points = fetch_hn_points(url)
+                    result["hn_points"] = points
                     add_datarecord(
                         url=url,
                         category=result.get("category"),
@@ -57,12 +50,31 @@ def main(request=None):
                         subcategory=result.get("subcategory"),
                         reading_time=result.get("reading_time"),
                         hn_points=result.get("hn_points"),
-                        mail_sent=False  # Wichtig: explizit False setzen
+                        mail_sent=False
                     )
+                print(f"{len(summaries_and_categories)} normale Links erfolgreich verarbeitet.")
 
-        # 2️⃣ Schritt: Mailversand für alle ungesendeten Artikel
+            # 🔹 Alert-Links separat verarbeiten
+            alert_links_dict = {}  # Dictionary {label: [urls]}
+            for link in all_links:
+                if link.get("alert"):
+                    label = link.get("alert_label", "Unbekannt")
+                    alert_links_dict.setdefault(label, []).append(link["url"])
+
+            if alert_links_dict:
+                alert_summaries = summarise_alerts(alert_links_dict)
+                for url, result in alert_summaries.items():
+                    add_datarecord(
+                        url=url,
+                        summary=result.get("summary"),
+                        reading_time=result.get("reading_time"),
+                        mail_sent=False
+                    )
+                print(f"{len(alert_summaries)} Alerts erfolgreich verarbeitet.")
+
+        # 2️⃣ Mailversand für normale ungesendete Artikel
         from database import get_unsent_entries, mark_as_sent
-        unsent_entries = get_unsent_entries()
+        unsent_entries = get_unsent_entries()  # Alerts vom Report ausschließen
 
         if not unsent_entries:
             print("Keine ungesendeten Artikel gefunden. Mailversand übersprungen.")
@@ -74,7 +86,6 @@ def main(request=None):
             sender_password = os.getenv("SENDER_PASSWORD")
             recipient_email = "projekt.dhbwrav@gmail.com"
 
-            # Report aus DB-Daten erstellen
             summaries_from_db = {
                 entry["url"]: {
                     "category": entry.get("category"),
@@ -85,11 +96,9 @@ def main(request=None):
                 for entry in unsent_entries
             }
 
-
             create_markdown_report(summaries_from_db, markdown_report_path)
             print("Markdown Report erstellt.")
 
-            # Mail senden
             send_mail(
                 sender_email=sender_email,
                 sender_password=sender_password,
@@ -98,7 +107,6 @@ def main(request=None):
                 mail_body_file=markdown_report_path
             )
 
-            # Artikel in DB als gesendet markieren
             mark_as_sent(unsent_entries)
             print("Artikel in der DB als gesendet markiert.")
 
@@ -106,9 +114,7 @@ def main(request=None):
         print(f"Funktion abgeschlossen in {elapsed_time:.2f} Sekunden.")
         return "Funktion erfolgreich ausgeführt", 200
 
-
     except Exception as e:
-
         print("[ERROR] Unhandled exception in main():", e)
         traceback.print_exc()
         return f"Fehler: {e}", 500
@@ -119,4 +125,11 @@ if __name__ == '__main__':
     main()
 
 
+# ToDo für alerts
+# summarise_alerts funktion schreiben                               -> done but not testet
+# filter funktion so ändern, dass sie in list_google_alerts ist     -> done
+# links mit alert=true in die datenbank schreiben                   -> done
+# zweite database funktion, die summary und mail_sent hinzufügt     -> done but not testet
+# alerts_connector in die main und per scheduler ausführen
 
+# alle datenbank einträge über eine zentrale funktion (add_datarecord)
