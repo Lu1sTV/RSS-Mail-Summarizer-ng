@@ -91,7 +91,8 @@ def main(request=None):
                     "category": entry.get("category"),
                     "subcategory": entry.get("subcategory"),
                     "summary": entry.get("summary"),
-                    "reading_time": entry.get("reading_time")
+                    "reading_time": entry.get("reading_time"),
+                    "hn_points": entry.get("hn_points")
                 }
                 for entry in unsent_entries
             }
