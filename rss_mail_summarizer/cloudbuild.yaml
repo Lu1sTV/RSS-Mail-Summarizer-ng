@@ -42,5 +42,24 @@ steps:
       - --set-env-vars
       - PROJECT_ID=dhbw-projekt-467419
 
+  # Deploy call_alerts function
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - call_alerts
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=./rss_mail_summarizer
+      - --entry-point=call_alerts
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --set-env-vars
+      - PROJECT_ID=dhbw-projekt-467419
+
 options:
   logging: CLOUD_LOGGING_ONLY

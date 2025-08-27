@@ -8,6 +8,7 @@ from llm_calls import summarise_and_categorize_websites, summarise_alerts
 from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
 from database import add_datarecord, is_duplicate_url, is_alert
+from alerts_connector import list_google_alerts
 import functions_framework
 from database import get_unprocessed_urls
 from utils.split_links import split_links_by_github
@@ -22,6 +23,16 @@ from alerts_connector import list_google_alerts
 def mastodon_connector_activate(request):
     fetch_and_store_mastodon_links()
     return "OK", 200
+
+@functions_framework.http
+def call_alerts(request=None):
+    try:
+        urls = list_google_alerts()
+        print("Alerts erfolgreich verarbeitet:", urls)
+        return {"status": "ok", "urls": urls}, 200
+    except Exception as e:
+        print("[ERROR] Unhandled exception in call_alerts():", e)
+        return f"Fehler: {e}", 500
 
 
 @functions_framework.http
@@ -128,7 +139,9 @@ def main(request=None):
 
 if __name__ == '__main__':
     main()
-
+    response, status = call_alerts()
+    print("Lokale Ausführung call_alerts beendet mit Status:", status)
+    print("Antwort:", response)
 
 # ToDo für alerts
 # summarise_alerts funktion schreiben                               -> done but not testet

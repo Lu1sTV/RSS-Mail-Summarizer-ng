@@ -21,8 +21,6 @@ Cloud Run:
 3. Skript funktioniert ohne Änderungen.
 """
 
-
-
 # --- Konfiguration ---
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 CREDENTIALS_DIR = "credentials"
