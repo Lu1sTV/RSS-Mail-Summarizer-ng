@@ -55,7 +55,7 @@ def send_mail(sender_email, sender_password, recipient_email, subject=None, mail
 def create_markdown_report(summaries_and_categories, markdown_report_path):
     """
     Erstellt eine Markdown-Datei mit allen neuen Artikeln, geordnet nach Kategorien und Subkategorien.
-    Robust gegen fehlende Felder.
+    Alerts haben keine Popularity-Angabe.
     """
     categorized_entries = {}
 
@@ -65,10 +65,13 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
         summary = details.get("summary") or "n/a"
         reading_time = details.get("reading_time")
         hn_points = details.get("hn_points")
+        is_alert = details.get("alert", False)
 
-        # Konvertiere None zu "n/a" für die Markdown-Ausgabe
-        reading_time_str = str(reading_time) if reading_time is not None else "n/a"
-        hn_points_str = str(hn_points) if hn_points is not None else "n/a"
+        # Text für "read in X min" (nur wenn Zahl vorhanden)
+        reading_time_text = f"read in {reading_time} min" if reading_time else "read time n/a"
+
+        # Popularity nur, wenn nicht Alert und hn_points vorhanden
+        popularity_text = f"(Popularity: {hn_points} points)" if hn_points and not is_alert else None
 
         if category not in categorized_entries:
             categorized_entries[category] = {}
@@ -77,7 +80,7 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
             categorized_entries[category][subcategory] = []
 
         categorized_entries[category][subcategory].append(
-            (summary, url, reading_time_str, hn_points_str)
+            (summary, url, reading_time_text, popularity_text)
         )
 
     with open(markdown_report_path, "w", encoding="utf-8") as file:
@@ -90,10 +93,15 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
                 if subcategory != "No Subcategory":
                     file.write(f"### {subcategory}\n\n")
 
-                for summary, url, reading_time_str, hn_points_str in articles:
-                    file.write(f"- {summary} [(read in {reading_time_str} min)] [(Popularity: {hn_points_str} points)]({url})\n")
+                for summary, url, reading_time_text, popularity_text in articles:
+                    line = f"- {summary} ([{reading_time_text}]({url}))"
+                    if popularity_text:  # nur hinzufügen, wenn nicht None
+                        line += f" {popularity_text}"
+                    file.write(line + "\n")
 
             file.write("\n")
+
+
 
 
 

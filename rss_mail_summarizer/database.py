@@ -73,7 +73,7 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     update_data = {"processed": True, "timestamp": timestamp, "url": url}  # URL hier hinzufügen
 
-    if category is not None:
+    if category:
         update_data["category"] = category
     if summary is not None:
         update_data["summary"] = summary
@@ -167,22 +167,16 @@ def add_url_to_website_collection(url):
 
 
 def add_alert_to_website_collection(url, category):
-    """
-    Speichert eine neue URL in der 'website'-Collection der Firestore-Datenbank, falls sie noch nicht existiert.
-    """
     doc_ref = db.collection("website").document(safe_url(url))
-    doc = doc_ref.get()
-    if not doc.exists:
-        doc_ref.set({
-            "url": url,
-            "alert": True,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-            "category": category,
-            "processed": False
-        })
-        print(f"Neue URL gespeichert: {url} (Kategorie: {category})")
-    else:
-        print(f"URL bereits vorhanden (wird ignoriert): {url}")
+    update_data = {
+        "url": url,
+        "alert": True,
+        "category": category,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+    }
+    doc_ref.set(update_data, merge=True)
+    print(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
+
 
 
 # holt nur unverarbeitete einträge aus der datenbank

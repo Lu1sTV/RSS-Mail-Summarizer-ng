@@ -224,7 +224,7 @@ def list_google_alerts():
 
 
 
-all_urls = list_google_alerts()
+# all_urls = list_google_alerts()
 
 
 

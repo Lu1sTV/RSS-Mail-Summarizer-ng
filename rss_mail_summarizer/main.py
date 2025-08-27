@@ -13,6 +13,7 @@ from database import get_unprocessed_urls
 from utils.split_links import split_links_by_github
 from mastodon_connector import fetch_and_store_mastodon_links
 from utils.hn_popularity import fetch_hn_points
+from alerts_connector import list_google_alerts
 
 # Es war notwendig diese Funktion auch in Main zu tun für Google Build.
 #alternativ wäre ein neuer Unterordner mit einer "main.py" möglich
@@ -28,6 +29,8 @@ def main(request=None):
     try:
         start_time = time.time()
         load_dotenv()
+
+        list_google_alerts()
 
         all_links = get_unprocessed_urls()
 
@@ -92,7 +95,8 @@ def main(request=None):
                     "subcategory": entry.get("subcategory"),
                     "summary": entry.get("summary"),
                     "reading_time": entry.get("reading_time"),
-                    "hn_points": entry.get("hn_points")
+                    "hn_points": entry.get("hn_points"),
+                    "alert": entry.get("alert", False)
                 }
                 for entry in unsent_entries
             }
