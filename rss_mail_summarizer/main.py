@@ -41,7 +41,8 @@ def main(request=None):
         start_time = time.time()
         load_dotenv()
 
-        list_google_alerts()
+        # einfügen bei manuellem testlauf
+        #list_google_alerts()
 
         all_links = get_unprocessed_urls()
 

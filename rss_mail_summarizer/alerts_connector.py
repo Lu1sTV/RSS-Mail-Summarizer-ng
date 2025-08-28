@@ -221,7 +221,7 @@ def list_google_alerts():
 
 
 
-
+# durch call in der Main und die google functions, war dies so nicht mehr notwendig
 # all_urls = list_google_alerts()
 
 

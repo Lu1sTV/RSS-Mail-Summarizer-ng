@@ -52,6 +52,27 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:$PROJECT_ID@cloudbuild.gserviceaccount.com" \
     --role="roles/iam.serviceAccountUser"
 ```
+
+### Umgang mit Secrets
+Für jedes der Google Secrets (momentan 3: rss-firestore-key, credentials-token-json, credentials-credentials-json) müssen die folgenden Berechtigungen vergeben werden, wobei PROJECT_ID und NR sowie der SECRET_NAME entsprechend eingefügt werden müssen: 
+
+```bash
+gcloud secrets add-iam-policy-binding SECRET_NAME \
+  --member="serviceAccount:PROJECT_NO-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding SECRET_NAME \
+  --member="serviceAccount:cloud-build@PROJECT_ID.iam.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding SECRET_NAME \
+  --member="serviceAccount:PROJECT_ID@appspot.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+(das zweite Service Account is das welches im Build Trigger für den Build festgelegt wurde, weshalb es auch eine gänzlich andere Email sein kann)
+
+Außerdem müssen für lokale Ausführungen in einer .env und für den Build Trigger in der cloudbuild.yaml PROJECT_ID hinterlegt werden bzw. bei der cloudbuild.yaml mit der eigenen PROJECT_ID ersetzt werden.
+
 ### GitHub-Repository mit Cloud Build verbinden
 Hierdurch wird der Code automatisch in der google Cloud Funktion aktualisiert, wenn die Main des GitHub Repos gepushed wird (Nur Repo Owner können die folgenden Schritte ausführen)
 
@@ -80,6 +101,5 @@ Felder folgenderweise befüllen:
     - **Zieltyp**: `HTTP`
     - **URL**: Die aus dem vorherigen Befehl kopierte URL
     - **HTTP-Methode**: `GET`
-
 
 
