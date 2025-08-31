@@ -18,45 +18,72 @@ Außerdem müssen folgende Dateien angelegt werden:
 
 ## Deployen:
 Zum eigenen deployen müssen die folgenden Schritte unternommen werden.
-### Firestore: 
-Zur Speicherung der Daten wird eine Firestore Sammlung/Collection mit dem Namen "website" benötigt in die ein "dummy" Eintrag eingefügt werden kann und nach dem Hinzufügen richtiger Datensätze entfernt werden kann.
-Um aus der lokalen Umgebung oder über gcloud Daten in die Firebase einspeichern zu können braucht es einen privaten Schlüssel (JSON) dafür:
-- Unter IAM & Verwaltung --> Dienstkonten in der cloud Console ein Dienstkonto erstellen.
-- Neuen Privaten Schlüssel generieren
-- die JSON unter serviceAccountKey.json im Ordner rss_mail_summarizer speichern (für lokal)
-- (In der Cloud deployed) In gcloud console zu Security --> Secret Manager navigieren:
-    - "secret erstellen"
-    - name vergeben
-    - Inhalt der JSON einfügen
-    - Erstellen
-    - Zugriff gewähren unter "Berechtigungen" an: service-PROJEKTNUMMER@gcf-admin-robot.iam.gserviceaccount.com mit der Rolle: Secret Manager Secret Accessor
+
+## Veränderungen im Code:
+Bei der rss-mail-summarizer/cloudbuild.yaml müssen die PROJECT_ID Werte ersetzt werden. 
+(Für eine lokale Ausführung in .env PROJECT_ID=IHRE_PROJECT_ID hinterlegen)
+
 ### APIs Aktivieren:
-Für die weitere Bearbeitung müssen einige der APIs aktiviert werden. Am einfachsten geht das mit gcloud SDK (sonst in der Webanwendung google cloud console):
+Für die weitere Bearbeitung müssen einige der APIs aktiviert werden. Am einfachsten geht das mit der Google Console (in der Webanwendung oder durch herunterladen einer entsprechenden Software in der eigenen Konsole):
+
 ```bash
 gcloud services enable cloudbuild.googleapis.com \
                        cloudfunctions.googleapis.com \
                        cloudresourcemanager.googleapis.com \
                        cloudscheduler.googleapis.com \
-                       artifactregistry.googleapis.com 
+                       artifactregistry.googleapis.com \
+                       secretmanager.googleapis.com \
+                       logging.googleapis.com \
+                       firestore.googleapis.com \
+                       run.googleapis.com
+```
+Alternativ können diese auch in der Web Benutzeroberfläche freigeschaltet werden.
+
+Ein weiterer Hinweis: sie müssen für einige der Dienste ein Rechnungskonto bei dem Projekt hinterlegt haben.
+
+### Dienstkonto:
+Da Google es nicht mag, wenn das Admin-Service-Account verwendet wird, sollte an dieser stellte (unter IAM & Verwaltung --> Dienstkonten) ein Dienstkonto mit einer gut zu merkenden Emailadresse und erstmal ohne weitere Berechtigungen erstellt werden.
+
+### Firestore: 
+Zunächst im Google Firestore eine Sammlung/Collection mit dem Namen "website" anlegen. Der Name der Datenbank kann dabei als Default belassen werden. Zum vollständigen Erstellen der Collection dann noch einen Dummy Eintrag einfügen, die Werte und Bezeichnungen sind dabei egal, notwendige "Spalten" werden dann automatisch vom Code angelegt. 
+
+Für den Firestore wird nun ein privater JSON Schlüssel benötigt.
+
+Um aus der lokalen Umgebung oder über gcloud Daten in die Firebase einspeichern zu können braucht es einen privaten Schlüssel (JSON) dafür:
+- Unter IAM & Verwaltung --> Dienstkonten zu dem im letzten Abschnitt erstellten Dienstkonto gehen und drauf clicken.
+- Beim Reiter "Schlüssel" auf "Schlüssel hinzufügen" clicken und neuen generieren als JavaScript Object Notation
+- die JSON unter serviceAccountKey.json im Ordner rss_mail_summarizer speichern (für lokae Ausführung)
+- Für das Deployment in der Google Cloud Weboberfläche nun zu Sicherheit --> Secret Manager navigieren und dort:
+    - "secret erstellen"
+    - name als "rss-firebase-key" vergeben
+    - Inhalt der JSON einfügen
+    - Erstellen
+    - Zugriff gewähren an das Dienskonto (erst generell zum Secret Manager und dann das spezifische Secret):
+
+```bash
+ gcloud projects add-iam-policy-binding IHRE_PROJECT_ID \
+  --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+  --role="roles/secretmanager.secretAccessor"
 ```
 
-### Cloud Build Rechte:
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:$PROJECT_ID@cloudbuild.gserviceaccount.com" \
-    --role="roles/cloudfunctions.developer"
-
-gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:$PROJECT_ID@cloudbuild.gserviceaccount.com" \
-    --role="roles/iam.serviceAccountUser"
+gcloud secrets add-iam-policy-binding rss-firebase-key \
+  --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+  --role="roles/secretmanager.secretAccessor"
 ```
 
-### Umgang mit Secrets
-Für jedes der Google Secrets (momentan 3: rss-firestore-key, credentials-token-json, credentials-credentials-json) müssen die folgenden Berechtigungen vergeben werden, wobei PROJECT_ID und NR sowie der SECRET_NAME entsprechend eingefügt werden müssen: 
+Außerdem nutzt die Funktion im Container dann folgendes Service Account, welches auch Zugriff braucht auf das Secret/ die Secrets:
 
 ```bash
+gcloud secrets add-iam-policy-binding rss-firebase-key \
+  --member="serviceAccount:PROEJECT_NO-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+Anmerkung: Für den Alerts_Connector braucht es noch zwei weitere Secrets, diese müssen folgendermaßen bennant werden: credentials-token-json, credentials-credentials-json
+Und dann auch durch den gcloud secrets ... Befehl freigeschaltet werden.
+
+<!-- ```bash
 gcloud secrets add-iam-policy-binding SECRET_NAME \
   --member="serviceAccount:PROJECT_NO-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
@@ -68,23 +95,50 @@ gcloud secrets add-iam-policy-binding SECRET_NAME \
 gcloud secrets add-iam-policy-binding SECRET_NAME \
   --member="serviceAccount:PROJECT_ID@appspot.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
-```
-(das zweite Service Account is das welches im Build Trigger für den Build festgelegt wurde, weshalb es auch eine gänzlich andere Email sein kann)
 
-Außerdem müssen für lokale Ausführungen in einer .env und für den Build Trigger in der cloudbuild.yaml PROJECT_ID hinterlegt werden bzw. bei der cloudbuild.yaml mit der eigenen PROJECT_ID ersetzt werden.
+  (das zweite Service Account is das welches im Build Trigger für den Build festgelegt wurde, weshalb es auch eine gänzlich andere Email sein kann)
+``` -->
 
-### GitHub-Repository mit Cloud Build verbinden
-Hierdurch wird der Code automatisch in der google Cloud Funktion aktualisiert, wenn die Main des GitHub Repos gepushed wird (Nur Repo Owner können die folgenden Schritte ausführen)
+### Cloudbuild Trigger:
+Mit einem Cloudbuildtrigger kann erreicht werden, dass die Google Funktionen des rss-mail-summarizer in Google automatisch aktualisiert werden, wenn in Github auf dem Main-Branch ein Commit geschieht (Nur Repo Owner können die folgenden Schritte ausführen).
 
 1. In der Cloud Build Umgebung auf Trigger gehen
 2. Klicke auf „Trigger erstellen“
 3. Wähle:
-    - Quelle: GitHub (verknüpfen, falls noch nicht geschehen)
-    - Repository: `RSS-Mail-Summarizer`
+    - Name: Frei wählbar
+    - Region: global
     - Ereignis: Push to branch (z. B. `main`)
-    - Verzeichnis: `rss_mail_summarizer/`
-    - Build Config File: `cloudbuild.yaml`
+    - Repository: Neues Repository verbinden --> GitHub --> Fortfahren --> dann entsprechendes Repository (hier: `RSS-Mail-Summarizer`) auswählen und erlauben.
+    - Konfiguration Typ: Cloud Build-Konfigurationsdatei (YAML oder JSON)
+    - Standort: Repository (Wert: rss_mail_summarizer/cloudbuild.yaml)
+    - Dienstkonto: das neu kreierte wählen
 4. „Erstellen“
+
+Nun müssen noch weitere Rechte an das Dienstkonto für den Cloudbuild prozess vergeben werden:
+
+```bash
+PROJECT_ID=$(gcloud config get-value project)
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --role="roles/cloudfunctions.developer"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --role="roles/iam.serviceAccountUser"
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --role="roles/logging.logWriter"  
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --role="roles/run.admin"  
+
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:PROJECT_NO-compute@developer.gserviceaccount.com" \
+    --role="roles/cloudbuild.builds.builder"      
+```
 
 ### Scheduler:
 Mit einem Scheduler wird die Cloud Funktion zu bestimmten Zeiten ausgeführt je nach eingestelltem Cron-Timejob

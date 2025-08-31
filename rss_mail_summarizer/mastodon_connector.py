@@ -82,4 +82,5 @@ def fetch_and_store_mastodon_links():
         duration = time.time() - start_time
         print(f"-- mastodon-connector dauerte {duration:.2f} Sekunden.")
 
-fetch_and_store_mastodon_links()
+if __name__ == "__main__":
+    fetch_and_store_mastodon_links()
