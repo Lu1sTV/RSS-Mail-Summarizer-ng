@@ -28,59 +28,16 @@ llm = ChatGoogleGenerativeAI(
 )
 
 def summarise_and_categorize_websites(links_list):
-    prompt = build_prompt(links_list, mode="default")
+    prompt = build_prompt(links_list)
     return process_llm_response(prompt)
 
-def summarise_websites(links_list):
-    prompt = build_prompt(links_list, mode="github")
-    return process_llm_response(prompt)
-
-
-
-def build_prompt(links_list, mode="default"):
+def build_prompt(links_list):
     combined_input = "\n\n".join(
         f"Input {i+1} (URL: {url})"
         for i, url in enumerate(links_list)
     )
-
-    if mode == "github":
-        prompt = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                """
-                You are an assistant that processes multiple GitHub URLs provided by the user.
-                For each input, perform the following tasks:
-
-                1. Summarize the content of the Website in about 3 sentences.
-                2. Identify specific topics or entities mentioned in the articles. These should be precise and clearly defined, such as names of technologies, events, organizations, or specific concepts discussed in the text.
-                3. Estimate the reading time of the article in minutes based on the length and complexity of the content. Make sure you assess each article individually!
-
-                If you are unable to access the contents of the provided website, return "Website content could not be reached!" for that input.
-
-                Format your response as follows:
-                Input 1 (URL: <url>):
-                Summary: <summary>
-                Category: GitHub
-                Topics: <topic1>, <topic2>, ...
-                Reading Time: <X> minutes
-
-                Input 2 (URL: <url>):
-                Summary: <summary>
-                Category: GitHub
-                Topics: <topic1>, <topic2>, ...
-                Reading Time: <X> minutes
-
-                ...
-
-                Ensure that the topics are specific and relevant to the main content of the article. The Category should always be "GitHub".
-                """
-            ),
-            ("human", f"{combined_input}"),
-        ]
-    ) 
-    else:
-        prompt = ChatPromptTemplate.from_messages(
+    
+    prompt = ChatPromptTemplate.from_messages(
         [
             (
                 "system",

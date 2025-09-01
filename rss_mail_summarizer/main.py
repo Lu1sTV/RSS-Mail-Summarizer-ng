@@ -11,7 +11,6 @@ from database import add_datarecord, is_duplicate_url, is_alert
 from alerts_connector import list_google_alerts
 import functions_framework
 from database import get_unprocessed_urls
-from utils.split_links import split_links_by_github
 from mastodon_connector import fetch_and_store_mastodon_links
 from utils.hn_popularity import fetch_hn_points
 from alerts_connector import list_google_alerts
