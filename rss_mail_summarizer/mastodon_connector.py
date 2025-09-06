@@ -4,9 +4,11 @@ import os
 import time
 from database import add_url_to_website_collection
 
+
 MASTODON_INSTANCE_URL = "https://mstdn.social"
 TARGET_USERNAME = "pinboard_pop"
-STATE_FILE = "last_toot_id.txt"
+STATE_FILE = "rss_mail_summarizer/last_toot_id.txt"
+
 
 def fetch_and_store_mastodon_links():
     start_time = time.time()
@@ -82,5 +84,6 @@ def fetch_and_store_mastodon_links():
         duration = time.time() - start_time
         print(f"-- mastodon-connector dauerte {duration:.2f} Sekunden.")
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     fetch_and_store_mastodon_links()

@@ -98,8 +98,6 @@ def process_llm_response(prompt):
     chain = prompt | llm
     response = chain.invoke({}).content
 
-    with open("llm_response.txt", "w", encoding="utf-8") as f:
-        f.write(response)
 
     # Parse the response and store it in a dictionary
     results = {}
@@ -216,9 +214,6 @@ def build_alert_prompt(alerts_dict):
 def process_alert_response(prompt, urls):
     chain = prompt | llm
     response = chain.invoke({}).content
-
-    with open("alert_llm_response.txt", "w", encoding="utf-8") as f:
-        f.write(response)
 
     results = {}
     for entry in response.split("\n\n"):

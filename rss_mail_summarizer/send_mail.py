@@ -40,7 +40,7 @@ def send_mail(sender_email, recipient_email, subject=None, mail_body_file=None, 
             sent = service.users().messages().send(userId="me", body=message).execute()
             print(f"Email sent successfully! Gmail API Message ID: {sent['id']}")
             # DB-Einträge als gesendet markieren
-            mark_as_sent(get_unsent_entries())
+            # mark_as_sent(get_unsent_entries())
         except Exception as e:
             print(f"Gmail API error: {e}")
 
