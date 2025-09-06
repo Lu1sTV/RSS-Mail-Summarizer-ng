@@ -1,5 +1,3 @@
-## DIe Mail wird nicht gesendet, da nicht jeder der Artikel, der von get_unsent_entries() gefunden wird auch alle nötigen felder hat ??
-
 import os
 import time
 import traceback
@@ -20,10 +18,7 @@ SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
 
-# Es war notwendig diese Funktion auch in Main zu tun für Google Build.
-#alternativ wäre ein neuer Unterordner mit einer "main.py" möglich
-#dann auch cloudbuild.yaml anpassen
-#für lokales laufen diese beiden Zeilen (wenn gewollt) einfach auskommentieren
+
 def mastodon_connector_activate(request):
     fetch_and_store_mastodon_links()
     return "OK", 200
@@ -44,9 +39,6 @@ def main():
     try:
         start_time = time.time()
         load_dotenv()
-
-        # einfügen bei manuellem testlauf
-        #list_google_alerts()
 
         all_links = get_unprocessed_urls()
 
