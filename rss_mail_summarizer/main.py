@@ -1,3 +1,27 @@
+"""
+Diese Datei ist die Hauptdatei des Projekts.
+Sie definiert drei Entry-Points für Google Cloud Functions:
+
+1. mastodon_connector_activate(request)
+   - Ruft über den Mastodon-Connector Links ab und speichert diese.
+
+2. call_alerts(request)
+   - Ruft Google Alerts ab, extrahiert die URLs und speichert sie in der Datenbank.
+
+3. main(request)
+   - Hauptfunktion zum Verarbeiten aller Links aus der Datenbank.
+   - Extrahiert und kategorisiert Inhalte, berechnet HN-Punkte, speichert die Ergebnisse in der Datenbank
+     und versendet den E-Mail-Report.
+
+Lokales Testen:
+- Die Funktion `main()` kann lokal getestet werden, ohne Cloud Functions zu deployen.
+  Dazu einfach das Skript direkt ausführen (`python main.py`)
+- Alerts und Mastodon-Integration sollten separat über die Dateien `alerts_connector`
+  bzw. `mastodon_connector` getestet werden, um die jeweiligen
+  Funktionen isoliert zu prüfen.
+"""
+
+
 import os
 import time
 import traceback
@@ -34,6 +58,24 @@ def call_alerts(request=None):
         return f"Fehler: {e}", 500
 
 
+"""
+Hauptfunktion zur Verarbeitung der gespeicherten Links:
+
+1. Abruf aller unprocessed URLs aus der Datenbank.
+2. Verarbeitung normaler Links (ohne Alerts):
+   - Inhalte zusammenfassen
+   - Hacker News Punkte berechnen
+   - Ergebnisse in der Datenbank speichern
+3. Verarbeitung von Alert-Links:
+   - Gruppierung nach Alert-Label
+   - Inhalte zusammenfassen
+   - Ergebnisse speichern, Feld 'processed' auf True setzen
+4. Erstellung und Versand des täglichen Markdown-E-Mail-Reports für normale Artikel
+   - Unsent Entries abrufen
+   - Report erstellen
+   - E-Mail versenden
+   - Artikel als gesendet markieren
+"""
 @functions_framework.http
 def main():
     try:
@@ -47,7 +89,7 @@ def main():
         else:
             print(f"{len(all_links)} neue Links in der Datenbank gefunden")
 
-            # 🔹 Normale Links (ohne alert)
+            # Normale Links (ohne alerts)
             normal_links = [link["url"] for link in all_links if not link.get("alert")]
             if normal_links:
                 summaries_and_categories = summarise_and_categorize_websites(normal_links)
@@ -65,8 +107,8 @@ def main():
                     )
                 print(f"{len(summaries_and_categories)} normale Links erfolgreich verarbeitet.")
 
-            # 🔹 Alert-Links separat verarbeiten
-            alert_links_dict = {}  # Dictionary {label: [urls]}
+            # Alert-Links separat verarbeiten
+            alert_links_dict = {}
             for link in all_links:
                 if link.get("alert"):
                     label = link.get("alert_label", "Unbekannt")
@@ -85,9 +127,9 @@ def main():
                     )
                 print(f"{len(alert_summaries)} Alerts erfolgreich verarbeitet.")
 
-        # 2️⃣ Mailversand für normale ungesendete Artikel
+        # Mailversand für normale ungesendete Artikel
         from database import get_unsent_entries, mark_as_sent
-        unsent_entries = get_unsent_entries()  # Alerts vom Report ausschließen
+        unsent_entries = get_unsent_entries()
 
         if not unsent_entries:
             print("Keine ungesendeten Artikel gefunden. Mailversand übersprungen.")

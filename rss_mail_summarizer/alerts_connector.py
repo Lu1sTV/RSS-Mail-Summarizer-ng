@@ -1,7 +1,10 @@
-"""Dieses Modul verbindet sich mit der Gmail API, um automatisch Google Alerts E-Mails
-auszulesen. Die enthaltenen Links werden extrahiert, in der Firestore-Datenbank
-gespeichert und die E-Mails danach als "processed" markiert.
-Damit werden Alerts nur einmal verarbeitet."""
+"""
+Dieses Modul verbindet sich mit der Gmail API, um automatisch Google Alerts E-Mails
+auszulesen. Die enthaltenen Links werden extrahiert und irrelevante Links werden gefiltert.
+Anschließend werden die übrigen Links in der Firestore-Datenbank gespeichert.
+
+
+"""
 
 import os
 from googleapiclient.discovery import build
@@ -10,10 +13,9 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 import base64
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
-import re
 from google.cloud import secretmanager
 from database import add_alert_to_website_collection
-import json
+
 
 # Google API Scopes und Dateipfade für Credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -103,9 +105,10 @@ def get_label_id(service, label_name):
     return None
 
 
-""" Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
-markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück. """
-
+"""
+Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
+markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück.
+"""
 def list_google_alerts():
 
     service = get_gmail_service()

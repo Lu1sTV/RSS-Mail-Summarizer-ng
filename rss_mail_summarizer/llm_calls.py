@@ -1,4 +1,5 @@
-"""Dieses Modul steuert die Interaktion mit Gemini.
+"""
+Dieses Modul steuert die Interaktion mit Gemini.
 Es enthält Funktionen, um Webseiten anhand ihrer URLs zusammenzufassen, zu kategorisieren
 und relevante Themen sowie Lesezeit zu bestimmen.
 Für Google Alerts werden gesonderte Prompts verwendet, die kurze Zusammenfassungen liefern.
@@ -158,14 +159,9 @@ def process_llm_response(prompt):
     return results
 
 
-#####################################################
 
 # Erstellt Zusammenfassungen für Google Alerts (kürzerer Prompt, nur Summary + Reading Time)
 def summarise_alerts(alerts_dict):
-    """
-    alerts_dict: Dictionary {label: [urls]}
-    Gibt zurück: Dictionary {url: {"summary": ..., "reading_time": ...}}
-    """
     all_results = {}
 
     for label, urls in alerts_dict.items():
@@ -197,6 +193,7 @@ def summarise_alerts(alerts_dict):
         all_results.update(result)
 
     return all_results
+
 
 # Erstellt den Prompt für die Google Alerts
 def build_alert_prompt(alerts_dict):

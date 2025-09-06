@@ -1,8 +1,10 @@
-"""Das Skript holt neue Beiträge von einem definierten Mastodon-Account ab
+"""
+Das Skript holt neue Beiträge vom definierten Mastodon-Feed ab
 und extrahiert Links aus deren Inhalt.
 Die gefundenen Links werden in der Firestore-Datenbank gespeichert.
 Um doppelte Verarbeitung zu vermeiden, wird die zuletzt verarbeitete Toot-ID
-in einer Datei gespeichert und beim nächsten Lauf wiederverwendet."""
+in einer Datei gespeichert und beim nächsten Lauf wiederverwendet.
+"""
 
 from mastodon import Mastodon
 from bs4 import BeautifulSoup

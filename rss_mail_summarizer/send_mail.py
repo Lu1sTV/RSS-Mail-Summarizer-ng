@@ -1,7 +1,9 @@
-"""Dieses Modul kümmert sich um das Erstellen und Versenden von E-Mails über die Gmail API.
-Es wandelt die übergebenen Markdown-Inhalte in HTML um, erstellt einen Report im Markdown-Format
-und kann zusätzlich Anhänge verschicken. Außerdem markiert es verschickte Artikel
-in der Datenbank als gesendet."""
+"""
+Dieses Modul kümmert sich um das Erstellen und Versenden von E-Mails über die Gmail API.
+Es wandelt die übergebenen Markdown-Inhalte in HTML um, erstellt einen Report im Markdown-Format.
+Außerdem werden verschickte Artikel in der Datenbank als gesendet markiert.
+Der Aufruf der Funktion send_mail() findet in der main.py statt.
+"""
 
 import base64
 from email.mime.text import MIMEText

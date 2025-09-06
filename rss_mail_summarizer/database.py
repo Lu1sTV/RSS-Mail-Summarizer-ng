@@ -1,16 +1,21 @@
-"""Dieses Modul enthält die Datenbank-Logik . Hier wird die Verbindung zu Firestore hergestellt und die Speicherung,
+"""
+Dieses Modul enthält alle Funktionen, die Artikel in die Datenbank schreiben oder diese abrufen.
+Hier wird die Verbindung zu Firestore hergestellt und die Speicherung,
 Verarbeitung und der Abruf von Website- und Alert-Daten verwaltet.
 Es enthält Funktionen zum Hinzufügen neuer Links, Speichern von Zusammenfassungen,
 Abrufen ungesendeter Artikel, Markieren als gesendet sowie Hilfsfunktionen wie
-das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links."""
+das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links.
+"""
 
-from datetime import datetime
 import os
 import json
 from dotenv import load_dotenv
 from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
+from urllib.parse import urlparse, parse_qs, unquote
+import re
+from datetime import datetime
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "rss_mail_summarizer/serviceAccountKey.json"
@@ -50,18 +55,10 @@ initialize_firebase()
 # Firestore-Client wird erstellt
 db = firestore.client()
 
-#als document ID in der website collection in der Firebase
-#wird die url verwendet. Bei dieser müssen jedoch die '/' entfernt/ersetzt werden:
-# def safe_url(url):
-#     safe_url = url.replace("/", "-")
-#     return safe_url
 
-
-from urllib.parse import urlparse, parse_qs, unquote
-import re
 
 def safe_url(google_url: str) -> str:
-    # 1️⃣ Google Redirect auf echte URL extrahieren
+    # Google Redirect auf echte URL extrahieren
     parsed = urlparse(google_url)
     qs = parse_qs(parsed.query)
     target = qs.get("url")
@@ -70,23 +67,16 @@ def safe_url(google_url: str) -> str:
     else:
         url = google_url
 
-    # 2️⃣ Firestore-kompatible Zeichen erzeugen
-    # Erlaubt: Buchstaben, Zahlen, Unterstrich, Bindestrich
-    # Alles andere wird durch Bindestrich ersetzt
+    # Firestore-kompatible Zeichen erzeugen
     url = url.strip()
     url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
-
-    # 3️⃣ Mehrfache Bindestriche zusammenfassen
     url = re.sub(r"-+", "-", url)
-
-    # 4️⃣ Optional: führendes oder abschließendes '-' entfernen
     url = url.strip("-")
 
     return url
 
 
-
-# neue flexiblere Funktion (muss noch ausgiebig getestet werden
+# Fügt Einträge in die Datenbank ein oder aktualisiert bestehende Einträge
 def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None, mail_sent=False, hn_points=None, processed=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     update_data = {
@@ -110,18 +100,14 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
         update_data["processed"] = processed
 
 
-        # Aktualisiert oder fügt einen Datensatz in der DB hinzu
-        db.collection("website").document(safe_url(url)).set(update_data, merge=True)
-        print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
+    db.collection("website").document(safe_url(url)).set(update_data, merge=True)
+    print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
 
 
 # Prüft, ob eine URL bereits in der Datenbank existiert
 def is_duplicate_url(url):
     doc = db.collection("website").document(safe_url(url)).get()
     return doc.exists
-
-
-from datetime import datetime, timedelta
 
 
 # Holt alle Artikel, die noch nicht per Mail gesendet wurden
@@ -171,8 +157,6 @@ def mark_as_sent(entries):
     print(f"{len(entries)} Einträge wurden als gesendet markiert.")
 
 
-################################################################
-
 
 # Fügt eine neue unverarbeitete URL in die Datenbank ein
 def add_url_to_website_collection(url):
@@ -207,13 +191,6 @@ def add_alert_to_website_collection(url, category):
 
 # Holt alle unverarbeiteten URLs (inkl. Info ob es sich um Alerts handelt)
 def get_unprocessed_urls():
-    """
-    Gibt eine Liste von Dictionaries zurück:
-    [
-        {"url": "https://example.com", "alert": False},
-        {"url": "https://alert.com", "alert": True}
-    ]
-    """
     urls = []
     for doc in db.collection("website").where("processed", "==", False).stream():
         data = doc.to_dict()
