@@ -52,23 +52,44 @@ initialize_firebase()
 # Firestore-Client wird erstellt
 db = firestore.client()
 
+#als document ID in der website collection in der Firebase
+#wird die url verwendet. Bei dieser müssen jedoch die '/' entfernt/ersetzt werden:
+# def safe_url(url):
+#     safe_url = url.replace("/", "-")
+#     return safe_url
 
-# Wandelt eine URL in einen Firestore-sicheren String (für Dokument-IDs) um
-def safe_url(url):
-    safe_url = url.replace("/", "-")
-    return safe_url
+
+from urllib.parse import urlparse, parse_qs, unquote
+import re
+
+def safe_url(google_url: str) -> str:
+    # 1️⃣ Google Redirect auf echte URL extrahieren
+    parsed = urlparse(google_url)
+    qs = parse_qs(parsed.query)
+    target = qs.get("url")
+    if target:
+        url = unquote(target[0])
+    else:
+        url = google_url
+
+    # 2️⃣ Firestore-kompatible Zeichen erzeugen
+    # Erlaubt: Buchstaben, Zahlen, Unterstrich, Bindestrich
+    # Alles andere wird durch Bindestrich ersetzt
+    url = url.strip()
+    url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
+
+    # 3️⃣ Mehrfache Bindestriche zusammenfassen
+    url = re.sub(r"-+", "-", url)
+
+    # 4️⃣ Optional: führendes oder abschließendes '-' entfernen
+    url = url.strip("-")
+
+    return url
 
 
-# Fügt oder aktualisiert einen Datensatz in der Datenbank für eine verarbeitete URL
-def add_datarecord(
-    url,
-    category=None,
-    summary=None,
-    reading_time=None,
-    subcategory=None,
-    mail_sent=False,
-    hn_points=None,
-):
+
+# neue flexiblere Funktion (muss noch ausgiebig getestet werden
+def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None, mail_sent=False, hn_points=None, processed=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     update_data = {
         "processed": True,
@@ -87,10 +108,13 @@ def add_datarecord(
         update_data["mail_sent"] = mail_sent
     if hn_points is not None:
         update_data["hn_points"] = hn_points
+    if processed is not None:
+        update_data["processed"] = processed
 
-    # Aktualisiert oder fügt einen Datensatz in der DB hinzu
-    db.collection("website").document(safe_url(url)).set(update_data, merge=True)
-    print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
+
+        # Aktualisiert oder fügt einen Datensatz in der DB hinzu
+        db.collection("website").document(safe_url(url)).set(update_data, merge=True)
+        print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
 
 
 # Prüft, ob eine URL bereits in der Datenbank existiert
@@ -119,7 +143,7 @@ def get_unsent_entries():
         if not url or not isinstance(url, str):
             print(f"[WARN] Überspringe Eintrag ohne gültige URL: {data}")
             continue
-        
+
         entry = {
             "doc_id": doc.id,
             "url": url,
@@ -131,9 +155,7 @@ def get_unsent_entries():
             "timestamp": data.get("timestamp"),
         }
         entries.append(entry)
-        print(
-            f"[DEBUG] Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})"
-        )
+        print(f"[DEBUG] Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
 
     print(f"[INFO] Insgesamt {len(entries)} Einträge mit mail_sent=False gefunden.")
     return entries
@@ -179,6 +201,7 @@ def add_alert_to_website_collection(url, category):
         "alert": True,
         "category": category,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+        "processed": False
     }
     doc_ref.set(update_data, merge=True)
     print(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
@@ -205,18 +228,6 @@ def get_unprocessed_urls():
     return urls
 
 
-# Markiert alle ungesendeten Einträge in der Datenbank als gesendet
-def mark_unsent_as_sent():
-    query = db.collection("website").where("mail_sent", "==", False).stream()
-
-    count = 0
-    for doc in query:
-        db.collection("website").document(doc.id).update({"mail_sent": True})
-        print("done")
-        count += 1
-
-    print(f"[INFO] mail_sent für {count} Einträge (mail_sent=False) auf True gesetzt.")
-
 
 # Prüft, ob eine bestimmte URL als Alert markiert ist
 def is_alert(url):
@@ -225,3 +236,4 @@ def is_alert(url):
         data = doc_ref.to_dict()
         return data.get("alert", False)
     return False
+

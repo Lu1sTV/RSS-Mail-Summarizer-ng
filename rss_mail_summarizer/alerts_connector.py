@@ -81,23 +81,16 @@ def get_gmail_service():
 
 # Filtert unerwünschte Links heraus
 def filter_links(links):
-    """
-    Filtert Links heraus, die unerwünschte Muster enthalten.
-    Nur Links, die NICHT auf die Blacklist passen, werden zurückgegeben.
-    """
-    blacklist_patterns = [
-        r"alerts/feedback",
-        r"alerts/remove",
-        r"alerts/edit",
-        r"alerts?s",
-        r"alerts/share",
+    blacklist = [
+        "alerts/feedback",
+        "alerts/remove",
+        "alerts/edit",
+        "alerts",
+        "alerts/share"
     ]
-    filtered = []
-    for link in links:
-        if not any(re.search(pattern, link) for pattern in blacklist_patterns):
-            filtered.append(link)
+    return [link for link in links if not any(b in link for b in blacklist)]
 
-    return filtered
+
 
 
 # Holt die Gmail Label-ID anhand des Label-Namens
@@ -126,9 +119,7 @@ def list_google_alerts():
             label_id = get_label_id(service, label_name)
             processed_label_id = get_label_id(service, processed_label_name)
             if not label_id or not processed_label_id:
-                print(
-                    f"Label '{label_name}' oder '{processed_label_name}' existiert nicht. Überspringe {alias}."
-                )
+                print(f"Label '{label_name}' oder '{processed_label_name}' existiert nicht. Überspringe {alias}.")
                 continue
 
             # Mails mit Label abrufen
@@ -143,12 +134,11 @@ def list_google_alerts():
             print(f"[{alias}] {len(messages)} Nachrichten gefunden.")
 
             for m in messages:
-                msg = (
-                    service.users()
-                    .messages()
-                    .get(userId="me", id=m["id"], format="full")
-                    .execute()
-                )
+                msg = service.users().messages().get(
+                    userId="me",
+                    id=m["id"],
+                    format="full"
+                ).execute()
 
                 body_html = ""
                 if "parts" in msg["payload"]:
@@ -156,19 +146,15 @@ def list_google_alerts():
                         if part.get("mimeType") == "text/html":
                             data = part["body"].get("data")
                             if data:
-                                body_html += base64.urlsafe_b64decode(data).decode(
-                                    "utf-8", errors="ignore"
-                                )
+                                body_html += base64.urlsafe_b64decode(data).decode("utf-8", errors="ignore")
 
                 # URLs aus HTML href-Attributen extrahieren
                 soup = BeautifulSoup(body_html, "html.parser")
-                links_in_mail = [
-                    a_tag["href"] for a_tag in soup.find_all("a", href=True)
-                ]
+                links_in_mail = [a_tag["href"] for a_tag in soup.find_all("a", href=True)]
                 print(f"[{alias}] → {len(links_in_mail)} Links gefunden.")
 
                 # Blacklist filtern
-                filtered_links = filter_links(links_in_mail)
+                links_in_mail = filter_links(links_in_mail)
 
                 # URLs in DB speichern
                 for url in links_in_mail:
@@ -185,15 +171,11 @@ def list_google_alerts():
                         "removeLabelIds": [label_id],
                     },
                 ).execute()
-                print(
-                    f"[{alias}] → Label geändert ({label_name} → {processed_label_name})"
-                )
+                print(f"[{alias}] → Label geändert ({label_name} → {processed_label_name})")
 
             # Duplikate entfernen
             all_urls[alias] = list(set(found_urls))
-            print(
-                f"[{alias}] Gesamt {len(all_urls[alias])} eindeutige Links extrahiert.\n"
-            )
+            print(f"[{alias}] Gesamt {len(all_urls[alias])} eindeutige Links extrahiert.\n")
 
         return all_urls
 
@@ -204,3 +186,5 @@ def list_google_alerts():
 
 if __name__ == "__main__":
     list_google_alerts()
+
+
