@@ -37,7 +37,7 @@ from send_mail import send_mail, create_markdown_report
 from utils.hn_popularity import fetch_hn_points
 
 
-MARKDOWN_REPORT_PATH = "rss_mail_summarizer/markdown_report.md"
+MARKDOWN_REPORT_PATH = "markdown_report.md"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
