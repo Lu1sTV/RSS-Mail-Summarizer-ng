@@ -1,3 +1,9 @@
+"""Dieses Modul steuert die Interaktion mit Gemini.
+Es enthält Funktionen, um Webseiten anhand ihrer URLs zusammenzufassen, zu kategorisieren
+und relevante Themen sowie Lesezeit zu bestimmen.
+Für Google Alerts werden gesonderte Prompts verwendet, die kurze Zusammenfassungen liefern.
+"""
+
 import re
 from collections import defaultdict
 
@@ -7,7 +13,7 @@ from dotenv import load_dotenv
 import os
 from langchain_core.rate_limiters import InMemoryRateLimiter
 
-
+# Umgebungsvariablen laden
 load_dotenv()
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
@@ -17,6 +23,7 @@ rate_limiter = InMemoryRateLimiter(
     max_bucket_size=1,
 )
 
+# Gemini initialisieren
 llm = ChatGoogleGenerativeAI(
     model="gemini-2.5-flash",
     google_api_key=GEMINI_API_KEY,
@@ -24,19 +31,22 @@ llm = ChatGoogleGenerativeAI(
     max_tokens=None,
     timeout=None,
     max_retries=2,
-    rate_limiter=rate_limiter
+    rate_limiter=rate_limiter,
 )
 
+
+# Führt den Workflow zur Summary und Kategorisierung einer Liste von URLs aus
 def summarise_and_categorize_websites(links_list):
     prompt = build_prompt(links_list)
     return process_llm_response(prompt)
 
+
+# Erstellt den Prompt für Gemini, inkl. Anweisungen zu Zusammenfassung, Kategorie, Themen, Lesezeit
 def build_prompt(links_list):
     combined_input = "\n\n".join(
-        f"Input {i+1} (URL: {url})"
-        for i, url in enumerate(links_list)
+        f"Input {i+1} (URL: {url})" for i, url in enumerate(links_list)
     )
-    
+
     prompt = ChatPromptTemplate.from_messages(
         [
             (
@@ -85,50 +95,61 @@ def build_prompt(links_list):
                 ...
 
                 Ensure that the topics are specific and relevant to the main content of the article.
-                """
+                """,
             ),
             ("human", f"{combined_input}"),
-        
         ]
-    ) 
+    )
 
-    return prompt    
+    return prompt
 
+
+# Verarbeitet die LLM-Ausgabe und extrahiert strukturierte Daten (Summary, Kategorie, Topics, Reading Time)
 def process_llm_response(prompt):
     chain = prompt | llm
     response = chain.invoke({}).content
 
-
-    # Parse the response and store it in a dictionary
+    # Parsed die Antwort und extrahiert die Informationen in ein Dictionary
     results = {}
     topic_counts = defaultdict(list)
 
-    for entry in response.split('\n\n'):
+    # LLM-Antwort nach Abschnitten splitten und auslesen
+    for entry in response.split("\n\n"):
         if "Input" in entry:
             url_match = re.search(r"URL:\s*(https?://[^\s)]+)", entry, re.IGNORECASE)
             summary_match = re.search(r"Summary:\s*(.+)", entry, re.IGNORECASE)
             category_match = re.search(r"Category:\s*(.+)", entry, re.IGNORECASE)
             topics_match = re.search(r"Topics:\s*(.+)", entry, re.IGNORECASE)
-            reading_time_match = re.search(r"Reading\s*Time:\s*(\d+)\s*minute[s]?", entry, re.IGNORECASE)
-
+            reading_time_match = re.search(
+                r"Reading\s*Time:\s*(\d+)\s*minute[s]?", entry, re.IGNORECASE
+            )
+            # Felder extrahieren
             url = url_match.group(1)
             summary = summary_match.group(1).strip() if summary_match else None
             category = category_match.group(1).strip() if category_match else None
-            topics = [topic.strip() for topic in topics_match.group(1).split(',')] if topics_match else []
-            reading_time = int(reading_time_match.group(1)) if reading_time_match else None
+            topics = (
+                [topic.strip() for topic in topics_match.group(1).split(",")]
+                if topics_match
+                else []
+            )
+            reading_time = (
+                int(reading_time_match.group(1)) if reading_time_match else None
+            )
 
             results[url] = {
                 "summary": summary,
                 "category": category,
                 "topics": topics,
                 "reading_time": reading_time,
-                "subcategory": None
+                "subcategory": None,
             }
 
+            # Sammelt Themen für spätere Subkategorisierung
             for topic in topics:
                 topic_counts[topic].append(url)
 
     for topic, urls in topic_counts.items():
+        # Wenn ein Thema in mindestens 3 Artikeln vorkommt, wird es als Subcategory verwendet
         if len(urls) >= 3:
             for url in urls:
                 if results[url]["subcategory"] is None:
@@ -137,10 +158,9 @@ def process_llm_response(prompt):
     return results
 
 
-
 #####################################################
 
-
+# Erstellt Zusammenfassungen für Google Alerts (kürzerer Prompt, nur Summary + Reading Time)
 def summarise_alerts(alerts_dict):
     """
     alerts_dict: Dictionary {label: [urls]}
@@ -150,8 +170,11 @@ def summarise_alerts(alerts_dict):
 
     for label, urls in alerts_dict.items():
         combined_input = "\n".join(f"{url}" for url in urls)
-        prompt = ChatPromptTemplate.from_messages([
-            ("system", f"""
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    f"""
             You are an assistant that summarizes multiple URLs for the alert '{label}'.
             For each URL, provide:
             1. Summary (2-3 sentences)
@@ -164,29 +187,31 @@ def summarise_alerts(alerts_dict):
             <URL>:
             Summary: <summary>
             Reading Time: <X> minutes
-            """),
-            ("human", combined_input)
-        ])
-
-        # Ergebnis für alle URLs des Labels abrufen
+            """,
+                ),
+                ("human", combined_input),
+            ]
+        )
+        # Ergebnisse abrufen und mit Sammelergebnis zusammenführen
         result = process_alert_response(prompt, urls)
-        # result sollte {url: {"summary": ..., "reading_time": ...}} sein
         all_results.update(result)
 
     return all_results
 
-
+# Erstellt den Prompt für die Google Alerts
 def build_alert_prompt(alerts_dict):
     """
     alerts_dict: Dictionary {label+url: url} für den Prompt
     """
     combined_input = "\n\n".join(
-        f"{label} (URL: {url})"
-        for label, url in alerts_dict.items()
+        f"{label} (URL: {url})" for label, url in alerts_dict.items()
     )
 
-    prompt = ChatPromptTemplate.from_messages([
-        ("system", """
+    prompt = ChatPromptTemplate.from_messages(
+        [
+            (
+                "system",
+                """
         You are an assistant that processes multiple URLs provided by the user.
         For each input, perform the following tasks:
 
@@ -205,12 +230,14 @@ def build_alert_prompt(alerts_dict):
         Reading Time: <X> minutes
 
         ...
-        """),
-        ("human", combined_input)
-    ])
+        """,
+            ),
+            ("human", combined_input),
+        ]
+    )
     return prompt
 
-
+# Verarbeitet die Gemini Antwort für Google Alerts und extrahiert Summary + Reading Time
 def process_alert_response(prompt, urls):
     chain = prompt | llm
     response = chain.invoke({}).content
@@ -220,16 +247,17 @@ def process_alert_response(prompt, urls):
         # URL aus dem Entry extrahieren
         url_match = re.search(r"(https?://\S+)", entry)
         summary_match = re.search(r"Summary:\s*(.+)", entry, re.IGNORECASE)
-        reading_time_match = re.search(r"Reading\s*Time:\s*(\d+)\s*minute[s]?", entry, re.IGNORECASE)
+        reading_time_match = re.search(
+            r"Reading\s*Time:\s*(\d+)\s*minute[s]?", entry, re.IGNORECASE
+        )
 
         if url_match:
             url = url_match.group(1)
             results[url] = {
                 "summary": summary_match.group(1).strip() if summary_match else None,
-                "reading_time": int(reading_time_match.group(1)) if reading_time_match else None
+                "reading_time": (
+                    int(reading_time_match.group(1)) if reading_time_match else None
+                ),
             }
 
     return results
-
-
-
