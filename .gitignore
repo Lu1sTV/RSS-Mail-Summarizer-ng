@@ -8,3 +8,5 @@ rss_mail_summarizer/last_toot_id.txt
 firestore_migration
 rss_mail_summarizer/credentials
 serviceAccountKey.json
+credentials/credentials.json
+credentials/token.json

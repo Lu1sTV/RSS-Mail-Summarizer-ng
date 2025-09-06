@@ -97,7 +97,6 @@ def main(request=None):
 
             markdown_report_path = "markdown_report.md"
             sender_email = "projekt.dhbwrav@gmail.com"
-            sender_password = os.getenv("SENDER_PASSWORD")
             recipient_email = "projekt.dhbwrav@gmail.com"
 
             summaries_from_db = {
@@ -117,7 +116,6 @@ def main(request=None):
 
             send_mail(
                 sender_email=sender_email,
-                sender_password=sender_password,
                 recipient_email=recipient_email,
                 subject="News of the day summarized",
                 mail_body_file=markdown_report_path
