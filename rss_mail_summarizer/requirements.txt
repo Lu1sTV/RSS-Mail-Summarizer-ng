@@ -8,9 +8,7 @@ google-cloud-secret-manager
 google-generativeai==0.8.4
 langchain-core==0.3.40
 langchain-google-genai==2.0.9
-lxml>=4.9.3
 Markdown==3.7
 Mastodon.py==2.0.1
-numpy==2.2.3
 python-dotenv==1.0.1
 requests==2.32.3
