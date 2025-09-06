@@ -1,25 +1,19 @@
-## Aktueller Stand:
-Artikel eines RSS Feeds werden zusammengefasst und (unter)kategorisiert. Die Ergebnisse werden zweimal täglich per Mail versandt und in einer Firestore Datenbank gespeichert.
+# RSS Mail Summarizer:
+Der RSS Mail Summarizer sammelt automatisch neue Beiträge aus dem Mastodon-Kanal pinboard.pop sowie alle Artikel zu Carlo Masala, die über Google Alerts gefunden werden, fasst sie zusammen und versendet die Ergebnisse zweimal täglich per Gmail. Die einzelnen Artikel werden thematisch geordnet, mit einer geschätzten Lesezeit versehen und – falls verfügbar – um die jeweilige Punktezahl auf Hacker News ergänzt.
 
-Außerdem können Fragen wie beispielsweise "Welche Artikel zu Trump wurden letzte Woche veröffentlicht?" durch ein RAG System beantwortet werden, wobei diese Funktionalität noch ausgebaut werden muss.
+Bitte beim lokalen ausführen des Codes aufpassen, dass dies aus dem root Folder (RSS-MAIL-SUMMARIZER) geschieht und nicht aus rss_mail_summarizer oder einem der anderen Unterordner, denn die Filepfade sind entsprechend im Code angegeben.
 
-## Hinweise zum Verwenden:
+## .env File:
 Um das Programm zu verwenden, müssen folgende Umgebungsvariablen in einer .env file hinterlegt werden:
 
 - **GEMINI_API_KEY**: (kann hier erstellt werden: https://ai.google.dev/gemini-api/docs/api-key?hl=de)
 
-- **SENDER_PASSWORD**: (Hiermit ist das App Passwort für den Gmail Account gemeint)
-
-Außerdem müssen folgende Dateien angelegt werden:
-
-- "rag/rag-account-service.key.json"
-
-- "rss_mail_summarizer/serviceAccountKey.json"
+- **PROJECT_ID**: Für das deployen in google cloud und das lokale Testen dessen die entprechende Project des Google Cloud Projektes hinterlegen
 
 ## Deployen:
 Zum eigenen deployen müssen die folgenden Schritte unternommen werden.
 
-## Veränderungen im Code:
+### Veränderungen im Code:
 Bei der rss-mail-summarizer/cloudbuild.yaml müssen die PROJECT_ID Werte ersetzt werden. 
 (Für eine lokale Ausführung in .env PROJECT_ID=IHRE_PROJECT_ID hinterlegen)
 
@@ -44,6 +38,17 @@ Ein weiterer Hinweis: sie müssen für einige der Dienste ein Rechnungskonto bei
 ### Dienstkonto:
 Da Google es nicht mag, wenn das Admin-Service-Account verwendet wird, sollte an dieser stellte (unter IAM & Verwaltung --> Dienstkonten) ein Dienstkonto mit einer gut zu merkenden Emailadresse und erstmal ohne weitere Berechtigungen erstellt werden.
 
+### Setzen von Variablen in der Cloud Console 
+Zum leichteren ausführen einiger der Befehle weiter unten in der Anleitung können hier einmal die Variablen gesetzt werden und die anderen Befehle dann einfach kopiert und ausgeführt werden ohne weitere Anpassungen vornehmen zu müssen:
+
+```bash
+PROJECT_ID=$(gcloud config get-value project)
+
+PROJECT_NO=$(gcloud projects describe $PROJECT_ID --format="value(projectNumber)")
+
+IHRE_DIENSTKONTO_EMAIL=<Hier bitte die gerade gewählte E-Mail adresse einfügen>
+```
+
 ### Firestore: 
 Zunächst im Google Firestore eine Sammlung/Collection mit dem Namen "website" anlegen. Der Name der Datenbank kann dabei als Default belassen werden. Zum vollständigen Erstellen der Collection dann noch einen Dummy Eintrag einfügen, die Werte und Bezeichnungen sind dabei egal, notwendige "Spalten" werden dann automatisch vom Code angelegt. 
 
@@ -61,14 +66,14 @@ Um aus der lokalen Umgebung oder über gcloud Daten in die Firebase einspeichern
     - Zugriff gewähren an das Dienskonto (erst generell zum Secret Manager und dann das spezifische Secret):
 
 ```bash
- gcloud projects add-iam-policy-binding IHRE_PROJECT_ID \
-  --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+ gcloud projects add-iam-policy-binding $PROJECT_ID \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
   --role="roles/secretmanager.secretAccessor"
 ```
 
 ```bash
 gcloud secrets add-iam-policy-binding rss-firebase-key \
-  --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
   --role="roles/secretmanager.secretAccessor"
 ```
 
@@ -76,11 +81,17 @@ Außerdem nutzt die Funktion im Container dann folgendes Service Account, welche
 
 ```bash
 gcloud secrets add-iam-policy-binding rss-firebase-key \
-  --member="serviceAccount:PROEJECT_NO-compute@developer.gserviceaccount.com" \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
   --role="roles/secretmanager.secretAccessor"
 ```
+Damit auch in die Collection geschrieben werden kann, muss folgende Rolle auch vergeben werden:
 
-### Alerts Connector
+```bash
+gcloud secrets add-iam-policy-binding rss-firebase-key \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/datastore.user"
+```
+
 
 ### Alerts Connector
 
@@ -129,30 +140,30 @@ Folgende Schritte sind dazu notwendig:
    - Dadurch wird eine **`credentials/token.json`** erstellt.  
    - Diese Datei enthält den Refresh-Token und wird für den automatisierten Zugriff benötigt.  
 
+6. **Google Secrets erstellen**  
+Die gerade erstellte credentials.json muss als Secret im Google Secret Manager mit dem Namen 'credentials-credentials-json' gespeichert werden und der Token als 'credentials-token-json'. Das anlegen erfolgt analog zum Secret mit der serviceAccountKey.json und anschließend werden noch die folgenden Befehle ausgeführt um den Dienstkonten die richtigen Berechtigungen zu erteilen:
 
+```bash
+gcloud secrets add-iam-policy-binding credentials-token-json \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding credentials-token-json \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding credentials-credentials-json \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding credentials-credentials-json \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
+  --role="roles/secretmanager.secretAccessor"
+```
 
 **Hinweis:**  
 Wenn weitere Alerts erstellt werden, muss die **`alert_map`** in der Datei `alerts_connector.py` entsprechend erweitert werden.  
 Zusätzlich müssen die passenden Gmail-Labels (`alerts-<NAME>` und `alerts-<NAME>-processed`) angelegt werden.  
-
-
----
-
-<!-- ```bash
-gcloud secrets add-iam-policy-binding SECRET_NAME \
-  --member="serviceAccount:PROJECT_NO-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding SECRET_NAME \
-  --member="serviceAccount:cloud-build@PROJECT_ID.iam.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding SECRET_NAME \
-  --member="serviceAccount:PROJECT_ID@appspot.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-
-  (das zweite Service Account is das welches im Build Trigger für den Build festgelegt wurde, weshalb es auch eine gänzlich andere Email sein kann)
-``` -->
 
 ### Cloudbuild Trigger:
 Mit einem Cloudbuildtrigger kann erreicht werden, dass die Google Funktionen des rss-mail-summarizer in Google automatisch aktualisiert werden, wenn in Github auf dem Main-Branch ein Commit geschieht (Nur Repo Owner können die folgenden Schritte ausführen).
@@ -172,26 +183,24 @@ Mit einem Cloudbuildtrigger kann erreicht werden, dass die Google Funktionen des
 Nun müssen noch weitere Rechte an das Dienstkonto für den Cloudbuild prozess vergeben werden:
 
 ```bash
-PROJECT_ID=$(gcloud config get-value project)
-
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
     --role="roles/cloudfunctions.developer"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
     --role="roles/iam.serviceAccountUser"
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
     --role="roles/logging.logWriter"  
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:IHRE_DIENSTKONTO_EMAIL" \
+    --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
     --role="roles/run.admin"  
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:PROJECT_NO-compute@developer.gserviceaccount.com" \
+    --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
     --role="roles/cloudbuild.builds.builder"      
 ```
 
@@ -210,5 +219,3 @@ Felder folgenderweise befüllen:
     - **Zieltyp**: `HTTP`
     - **URL**: Die aus dem vorherigen Befehl kopierte URL
     - **HTTP-Methode**: `GET`
-
-
