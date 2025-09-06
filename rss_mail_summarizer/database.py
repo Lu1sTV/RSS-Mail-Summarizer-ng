@@ -1,7 +1,6 @@
 from datetime import datetime
 import os
 import json
-
 from dotenv import load_dotenv
 from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
@@ -9,6 +8,9 @@ import firebase_admin
 from sentence_transformers import SentenceTransformer
 
 load_dotenv()
+SERVICE_ACCOUNT_KEY_PATH = "rss_mail_summarizer/serviceAccountKey.json"
+
+
 # -- embedding model --
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
@@ -35,7 +37,7 @@ def initialize_firebase():
     except Exception as e:
         #wenn lokale Ausführung
         print(f"Falling back to local serviceAccountKey.json file. Reason: {e}")
-        cred = credentials.Certificate("serviceAccountKey.json")
+        cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
 
     if not firebase_admin._apps:
         initialize_app(cred)

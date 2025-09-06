@@ -7,14 +7,18 @@ import traceback
 from llm_calls import summarise_and_categorize_websites, summarise_alerts
 from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
-from database import add_datarecord, is_duplicate_url, is_alert
-from alerts_connector import list_google_alerts
+from database import add_datarecord
 import functions_framework
 from database import get_unprocessed_urls
-from utils.split_links import split_links_by_github
 from mastodon_connector import fetch_and_store_mastodon_links
 from utils.hn_popularity import fetch_hn_points
 from alerts_connector import list_google_alerts
+
+
+MARKDOWN_REPORT_PATH = "rss_mail_summarizer/markdown_report.md"
+SENDER_EMAIL = os.getenv("SENDER_EMAIL")
+RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
+
 
 # Es war notwendig diese Funktion auch in Main zu tun für Google Build.
 #alternativ wäre ein neuer Unterordner mit einer "main.py" möglich
@@ -36,7 +40,7 @@ def call_alerts(request=None):
 
 
 @functions_framework.http
-def main(request=None):
+def main():
     try:
         start_time = time.time()
         load_dotenv()
@@ -96,10 +100,6 @@ def main(request=None):
         else:
             print(f"{len(unsent_entries)} ungesendete Artikel gefunden – Report wird erstellt.")
 
-            markdown_report_path = "markdown_report.md"
-            sender_email = "projekt.dhbwrav@gmail.com"
-            sender_password = os.getenv("SENDER_PASSWORD")
-            recipient_email = "projekt.dhbwrav@gmail.com"
 
             summaries_from_db = {
                 entry["url"]: {
@@ -113,15 +113,14 @@ def main(request=None):
                 for entry in unsent_entries
             }
 
-            create_markdown_report(summaries_from_db, markdown_report_path)
+            create_markdown_report(summaries_from_db, MARKDOWN_REPORT_PATH)
             print("Markdown Report erstellt.")
 
             send_mail(
-                sender_email=sender_email,
-                sender_password=sender_password,
-                recipient_email=recipient_email,
+                sender_email=SENDER_EMAIL,
+                recipient_email=RECIPIENT_EMAIL,
                 subject="News of the day summarized",
-                mail_body_file=markdown_report_path
+                mail_body_file=MARKDOWN_REPORT_PATH
             )
 
             mark_as_sent(unsent_entries)
@@ -140,15 +139,6 @@ def main(request=None):
 
 if __name__ == '__main__':
     main()
-    response, status = call_alerts()
-    print("Lokale Ausführung call_alerts beendet mit Status:", status)
-    print("Antwort:", response)
 
-# ToDo für alerts
-# summarise_alerts funktion schreiben                               -> done but not testet
-# filter funktion so ändern, dass sie in list_google_alerts ist     -> done
-# links mit alert=true in die datenbank schreiben                   -> done
-# zweite database funktion, die summary und mail_sent hinzufügt     -> done but not testet
-# alerts_connector in die main und per scheduler ausführen
 
-# alle datenbank einträge über eine zentrale funktion (add_datarecord)
+
