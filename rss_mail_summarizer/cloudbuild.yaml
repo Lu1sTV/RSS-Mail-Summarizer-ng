@@ -15,7 +15,7 @@ steps:
       - --runtime=python311
       - --region=europe-west3
       - --source=.
-      - --entry-point=mastodon_connector_activate
+      - --entry-point=rss_mail_summarizer.main.mastodon_connector_activate
       - --trigger-http
       - --allow-unauthenticated
       - --memory=2GiB
@@ -34,7 +34,7 @@ steps:
       - --runtime=python311
       - --region=europe-west3
       - --source=.
-      - --entry-point=main
+      - --entry-point=rss_mail_summarizer.main.main
       - --trigger-http
       - --allow-unauthenticated
       - --memory=2GiB
@@ -52,7 +52,7 @@ steps:
       - --runtime=python311
       - --region=europe-west3
       - --source=.
-      - --entry-point=call_alerts
+      - --entry-point=rss_mail_summarizer.main.call_alerts
       - --trigger-http
       - --allow-unauthenticated
       - --memory=2GiB
