@@ -14,7 +14,6 @@ import firebase_admin
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "rss_mail_summarizer/serviceAccountKey.json"
-model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
 # Google Secret einholen wenn in Google ausgeführt
