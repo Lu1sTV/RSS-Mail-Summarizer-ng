@@ -83,11 +83,13 @@ def main():
             if alert_links_dict:
                 alert_summaries = summarise_alerts(alert_links_dict)
                 for url, result in alert_summaries.items():
+
                     add_datarecord(
                         url=url,
                         summary=result.get("summary"),
                         reading_time=result.get("reading_time"),
-                        mail_sent=False
+                        mail_sent=False,
+                        processed=True
                     )
                 print(f"{len(alert_summaries)} Alerts erfolgreich verarbeitet.")
 

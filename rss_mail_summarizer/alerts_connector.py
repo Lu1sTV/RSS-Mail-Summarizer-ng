@@ -65,28 +65,19 @@ def get_gmail_service():
 
     return build("gmail", "v1", credentials=creds)
 
-# Wichtig:
 
 
 def filter_links(links):
-    """
-    Filtert Links heraus, die unerwünschte Muster enthalten.
-    Nur Links, die NICHT auf die Blacklist passen, werden zurückgegeben.
-    """
-    blacklist_patterns = [
-        r"alerts/feedback",
-        r"alerts/remove",
-        r"alerts/edit",
-        r"alerts?s",
-        r"alerts/share"
+    blacklist = [
+        "alerts/feedback",
+        "alerts/remove",
+        "alerts/edit",
+        "alerts",
+        "alerts/share"
     ]
+    return [link for link in links if not any(b in link for b in blacklist)]
 
-    filtered = []
-    for link in links:
-        if not any(re.search(pattern, link) for pattern in blacklist_patterns):
-            filtered.append(link)
 
-    return filtered
 
 def get_label_id(service, label_name):
     """Holt die Gmail Label-ID anhand des Label-Namens"""
@@ -148,7 +139,7 @@ def list_google_alerts():
                 print(f"[{alias}] → {len(links_in_mail)} Links gefunden.")
 
                 # Blacklist filtern
-                filtered_links = filter_links(links_in_mail)
+                links_in_mail = filter_links(links_in_mail)
 
 
                 # URLs in DB speichern

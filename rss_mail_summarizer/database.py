@@ -49,9 +49,38 @@ db = firestore.client()
 
 #als document ID in der website collection in der Firebase
 #wird die url verwendet. Bei dieser müssen jedoch die '/' entfernt/ersetzt werden:
-def safe_url(url):
-    safe_url = url.replace("/", "-")
-    return safe_url
+# def safe_url(url):
+#     safe_url = url.replace("/", "-")
+#     return safe_url
+
+
+from urllib.parse import urlparse, parse_qs, unquote
+import re
+
+def safe_url(google_url: str) -> str:
+    # 1️⃣ Google Redirect auf echte URL extrahieren
+    parsed = urlparse(google_url)
+    qs = parse_qs(parsed.query)
+    target = qs.get("url")
+    if target:
+        url = unquote(target[0])
+    else:
+        url = google_url
+
+    # 2️⃣ Firestore-kompatible Zeichen erzeugen
+    # Erlaubt: Buchstaben, Zahlen, Unterstrich, Bindestrich
+    # Alles andere wird durch Bindestrich ersetzt
+    url = url.strip()
+    url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
+
+    # 3️⃣ Mehrfache Bindestriche zusammenfassen
+    url = re.sub(r"-+", "-", url)
+
+    # 4️⃣ Optional: führendes oder abschließendes '-' entfernen
+    url = url.strip("-")
+
+    return url
+
 
 
 # def add_datarecord(url, category, summary, reading_time, subcategory=None, mail_sent=False,  hn_points=None):
@@ -74,7 +103,7 @@ def safe_url(url):
 
 
 # neue flexiblere Funktion (muss noch ausgiebig getestet werden
-def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None, mail_sent=False, hn_points=None):
+def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None, mail_sent=False, hn_points=None, processed=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     update_data = {"processed": True, "timestamp": timestamp, "url": url}  # URL hier hinzufügen
 
@@ -90,8 +119,15 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
         update_data["mail_sent"] = mail_sent
     if hn_points is not None:
         update_data["hn_points"] = hn_points
+    if processed is not None:
+        update_data["processed"] = processed
 
-    db.collection("website").document(safe_url(url)).set(update_data, merge=True)
+    doc_ref = db.collection("website").document(safe_url(url))
+    print("Vor Update:", doc_ref.get().to_dict())  # aktueller Wert in DB
+    doc_ref.set(update_data, merge=True)
+    print("Nach Update:", doc_ref.get().to_dict())  # Wert nach dem Schreiben
+
+    # db.collection("website").document(safe_url(url)).set(update_data, merge=True)
     print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
 
 
@@ -178,6 +214,7 @@ def add_alert_to_website_collection(url, category):
         "alert": True,
         "category": category,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+        "processed": False
     }
     doc_ref.set(update_data, merge=True)
     print(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")

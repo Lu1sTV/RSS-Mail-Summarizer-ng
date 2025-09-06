@@ -1,12 +1,7 @@
 # News of the Day
 
-## n/a
+## Carlo Masala
 
-- The article discusses a "Quarterly Lecture" focusing on the future of German and European security policy, particularly in light of the relationship between Putin and Trump. It likely explores potential scenarios and challenges for the region's geopolitical landscape. ([read in 3 min](https://www.google.com/alerts/edit?source=alertsmail&hl=de&gl=US&msgid=MTIzODkzNTE5NTg2Mzc0MTY0ODQ&s=AB2Xq4iQD1Cua0UGBlk5vLOI46iaKR-GMSb25z8&email=projekt.dhbwrav%40gmail.com:))
-
-## Health and Wellness
-
-### Website content could not be reached!
-
-- This article presents an abstract for a systematic analysis conducted for the Global Burden of Disease Study 2021, focusing on the global, regional, and national burden of surgical conditions from 1990 to 2021. The study aims to quantify the impact and trends of various surgical conditions worldwide over three decades. It provides crucial data for understanding the epidemiology and public health implications of surgical diseases across different populations. ([read in 2 min](https://www.thelancet.com/journals/langas/article/PIIS2468-1253(25)) (Popularity: 38 points)
+- Luise Amtsberg, the German government's Human Rights Commissioner, is traveling to Israel to assess the human rights situation following the October 7th attacks and the ongoing conflict. She plans to meet with Israeli officials, human rights organizations, and civil society representatives to discuss challenges and express Germany's solidarity, while also addressing humanitarian concerns in Gaza. Her visit underscores Germany's commitment to international humanitarian law. ([read in 3 min](https://www.google.com/url?rct=j&sa=t&url=https://www.juedische-allgemeine.de/politik/deutscher-beauftragter-fuer-menschenrechte-reist-nach-israel/&ct=ga&cd=CAEYACoTODE1NjMwMjU3NTA1MDY3NjQxODIaZDNlYjJkMDczZDYyNTJmZTpjb206ZGU6VVM&usg=AOvVaw1IBeO7B35_i2mr5pGHSw7r:))
+- n/a ([read time n/a](https://www.google.com/url?rct=j&sa=t&url=https://www.youtube.com/watch%3Fv%3DLR8Puuzrnac&ct=ga&cd=CAEYACoTODQxMDg3MzkwNTM2MDU0NjU1NTIaZDNlYjJkMDczZDYyNTJmZTpjb206ZGU6VVM&usg=AOvVaw3XtSm6hF6IPXlRAta1DMjv:))
 
