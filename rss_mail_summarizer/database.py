@@ -16,9 +16,6 @@ from sentence_transformers import SentenceTransformer
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "rss_mail_summarizer/serviceAccountKey.json"
-
-
-# -- embedding model --
 model = SentenceTransformer("all-MiniLM-L6-v2")
 
 
@@ -43,7 +40,7 @@ def initialize_firebase():
         service_account_info = json.loads(service_account_key)
         cred = credentials.Certificate(service_account_info)
     except Exception as e:
-        # Wenn lokale Ausführung
+        # Wenn lokale Ausführung:
         print(f"Falling back to local serviceAccountKey.json file. Reason: {e}")
         cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
 
@@ -78,7 +75,7 @@ def add_datarecord(
         "processed": True,
         "timestamp": timestamp,
         "url": url,
-    }  # URL hier hinzufügen
+    } 
 
     if category:
         update_data["category"] = category
@@ -125,7 +122,7 @@ def get_unsent_entries():
             continue
 
         entry = {
-            "doc_id": doc.id,  # nützlich, um später gezielt zu markieren
+            "doc_id": doc.id, 
             "url": url,
             "category": data.get("category"),
             "summary": data.get("summary"),
@@ -149,7 +146,7 @@ def mark_as_sent(entries):
         url = entry.get("url")
         if not url:
             print(f"[WARN] Kein URL-Feld für Eintrag: {entry}")
-            continue  # Überspringe diesen Eintrag
+            continue  
         db.collection("website").document(safe_url(url)).update({"mail_sent": True})
 
     print(f"{len(entries)} Einträge wurden als gesendet markiert.")
@@ -197,14 +194,13 @@ def get_unprocessed_urls():
         {"url": "https://alert.com", "alert": True}
     ]
     """
-    # Beispiel: Datenbank-Abfrage
     urls = []
     for doc in db.collection("website").where("processed", "==", False).stream():
         data = doc.to_dict()
         urls.append(
             {
                 "url": data.get("url"),
-                "alert": data.get("alert", False),  # Standard False
+                "alert": data.get("alert", False), 
             }
         )
     return urls

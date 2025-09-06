@@ -7,6 +7,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
+# Starte den OAuth-Flow und speichere die Zugangsdaten
 flow = InstalledAppFlow.from_client_secrets_file(
     "../credentials/credentials.json", SCOPES
 )

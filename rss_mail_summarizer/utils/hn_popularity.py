@@ -9,12 +9,14 @@ import requests
 Als maximale Wartezeit für die Anfrage können optional Sekunden angegeben werden. """
 def fetch_hn_points(url: str, timeout=8):
     try:
+        # Sendet GET-Anfrage an die Algolia-API
         r = requests.get(
             "https://hn.algolia.com/api/v1/search",
             params={"query": url, "restrictSearchableAttributes": "url", "tags": "story"},
             timeout=timeout,
         )
         r.raise_for_status()
+        # Extrahiert die Treffer und findet den Eintrag mit den meisten Punkten
         hits = r.json().get("hits", [])
         if not hits:
             return None
