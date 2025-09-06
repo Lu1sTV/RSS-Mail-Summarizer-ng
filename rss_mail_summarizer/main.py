@@ -77,7 +77,7 @@ Hauptfunktion zur Verarbeitung der gespeicherten Links:
    - Artikel als gesendet markieren
 """
 @functions_framework.http
-def main():
+def main(request=None):
     try:
         start_time = time.time()
         load_dotenv()
