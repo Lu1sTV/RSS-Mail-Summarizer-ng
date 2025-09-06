@@ -10,12 +10,16 @@ Um das Programm zu verwenden, müssen folgende Umgebungsvariablen in einer .env 
 
 - **PROJECT_ID**: Für das deployen in google cloud und das lokale Testen dessen die entprechende Project des Google Cloud Projektes hinterlegen
 
+- **SENDER_EMAIL**: (Die Mail-Adresse mit der die E-Mail versandt werden soll)
+
+- **RECIPIENT_EMAIL**: (Die Mail-Adresse welche die E-Mail erhalten soll)
+
 ## Deployen:
 Zum eigenen deployen müssen die folgenden Schritte unternommen werden.
 
 ### Veränderungen im Code:
-Bei der rss-mail-summarizer/cloudbuild.yaml müssen die PROJECT_ID Werte ersetzt werden. 
-(Für eine lokale Ausführung in .env PROJECT_ID=IHRE_PROJECT_ID hinterlegen)
+Bei der rss-mail-summarizer/cloudbuild.yaml müssen die PROJECT_ID Werte, SENDER_EMAIL und RECIPIENT_EMAIL ersetzt werden. 
+(Für eine lokale Ausführung in .env PROJECT_ID=IHRE_PROJECT_ID hinterlegen etc.)
 
 ### APIs Aktivieren:
 Für die weitere Bearbeitung müssen einige der APIs aktiviert werden. Am einfachsten geht das mit der Google Console (in der Webanwendung oder durch herunterladen einer entsprechenden Software in der eigenen Konsole):
