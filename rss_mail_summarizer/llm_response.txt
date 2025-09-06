@@ -1,5 +1,5 @@
 Input 1 (URL: https://www.thelancet.com/journals/langas/article/PIIS2468-1253(25)00133-5/abstract):
-Summary: This article presents an abstract for a systematic analysis conducted for the Global Burden of Disease Study 2021, focusing on the global, regional, and national burden of surgical conditions from 1990 to 2021. The study aims to quantify the impact and trends of various surgical conditions worldwide over three decades. It provides crucial data for understanding the epidemiology and public health implications of surgical diseases across different populations.
+Summary: This article presents a systematic analysis of the global, regional, and national burden of surgical site infection (SSI) from 1990 to 2021, conducted for the Global Burden of Disease Study 2021. It highlights SSIs as a major cause of morbidity and mortality, emphasizing their significant health and economic impact worldwide. The study aims to provide comprehensive data to inform and improve prevention strategies and patient outcomes globally.
 Category: Health and Wellness
-Topics: Global Burden of Disease Study 2021, Surgical conditions, Systematic analysis, Disease burden, Epidemiology, Public health, Global health
-Reading Time: 2 minutes
+Topics: Surgical site infection (SSI), Global Burden of Disease Study 2021, Morbidity, Mortality, Prevention strategies, Patient outcomes, Global health
+Reading Time: 1 minute
