@@ -5,9 +5,9 @@ und relevante Themen sowie Lesezeit zu bestimmen.
 Für Google Alerts werden gesonderte Prompts verwendet, die kurze Zusammenfassungen liefern.
 """
 
+#package imports
 import re
 from collections import defaultdict
-
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv

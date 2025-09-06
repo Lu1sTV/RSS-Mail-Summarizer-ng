@@ -7,6 +7,7 @@ Abrufen ungesendeter Artikel, Markieren als gesendet sowie Hilfsfunktionen wie
 das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links.
 """
 
+#package imports
 import os
 import json
 from dotenv import load_dotenv

@@ -21,20 +21,20 @@ Lokales Testen:
   Funktionen isoliert zu prüfen.
 """
 
-
+#package imports
 import os
 import time
 import traceback
-
-from llm_calls import summarise_and_categorize_websites, summarise_alerts
-from send_mail import send_mail, create_markdown_report
 from dotenv import load_dotenv
-from database import add_datarecord
 import functions_framework
-from database import get_unprocessed_urls
-from mastodon_connector import fetch_and_store_mastodon_links
-from utils.hn_popularity import fetch_hn_points
+
+#Imports eigener Funktionen
 from alerts_connector import list_google_alerts
+from database import add_datarecord, get_unprocessed_urls, get_unsent_entries, mark_as_sent
+from llm_calls import summarise_and_categorize_websites, summarise_alerts
+from mastodon_connector import fetch_and_store_mastodon_links
+from send_mail import send_mail, create_markdown_report
+from utils.hn_popularity import fetch_hn_points
 
 
 MARKDOWN_REPORT_PATH = "rss_mail_summarizer/markdown_report.md"
@@ -128,7 +128,6 @@ def main():
                 print(f"{len(alert_summaries)} Alerts erfolgreich verarbeitet.")
 
         # Mailversand für normale ungesendete Artikel
-        from database import get_unsent_entries, mark_as_sent
         unsent_entries = get_unsent_entries()
 
         if not unsent_entries:

@@ -5,6 +5,7 @@ Außerdem werden verschickte Artikel in der Datenbank als gesendet markiert.
 Der Aufruf der Funktion send_mail() findet in der main.py statt.
 """
 
+#package imports
 import base64
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -12,8 +13,10 @@ from email.mime.base import MIMEBase
 from email import encoders
 from pathlib import Path
 import markdown
-from database import get_unsent_entries, mark_as_sent
+
+#Imports eigener Funktionen
 from alerts_connector import get_gmail_service
+from database import get_unsent_entries, mark_as_sent
 
 
 # Sendet eine E-Mail über die Gmail API, optional mit Markdown-Inhalt und Anhang

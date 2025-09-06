@@ -6,6 +6,7 @@ Anschließend werden die übrigen Links in der Firestore-Datenbank gespeichert.
 
 """
 
+#package imports
 import os
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
@@ -14,6 +15,8 @@ import base64
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
 from google.cloud import secretmanager
+
+#Imports eigener Funktionen
 from database import add_alert_to_website_collection
 
 

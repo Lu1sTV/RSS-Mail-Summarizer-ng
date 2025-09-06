@@ -6,10 +6,13 @@ Um doppelte Verarbeitung zu vermeiden, wird die zuletzt verarbeitete Toot-ID
 in einer Datei gespeichert und beim nächsten Lauf wiederverwendet.
 """
 
+#package Imports
 from mastodon import Mastodon
 from bs4 import BeautifulSoup
 import os
 import time
+
+#Imports eigener Funktionen
 from database import add_url_to_website_collection
 
 

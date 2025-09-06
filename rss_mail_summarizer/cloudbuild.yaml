@@ -39,10 +39,7 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
-      - --set-env-vars
-      - PROJECT_ID=dhbw-projekt-467419
-      - SENDER_EMAIL=projekt.dhbwrav@gmail.com
-      - RECIPIENT_EMAIL=projekt.dhbwrav@gmail.com
+      - --set-env-vars=PROJECT_ID=dhbw-projekt-467419,SENDER_EMAIL=projekt.dhbwrav@gmail.com,RECIPIENT_EMAIL=projekt.dhbwrav@gmail.com
 
   # Deploy call_alerts function
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
