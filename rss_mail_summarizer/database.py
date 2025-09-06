@@ -2,8 +2,7 @@
 Verarbeitung und der Abruf von Website- und Alert-Daten verwaltet.
 Es enthält Funktionen zum Hinzufügen neuer Links, Speichern von Zusammenfassungen,
 Abrufen ungesendeter Artikel, Markieren als gesendet sowie Hilfsfunktionen wie
-das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links.
-"""
+das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links."""
 
 from datetime import datetime
 import os
@@ -75,8 +74,7 @@ def add_datarecord(
         "processed": True,
         "timestamp": timestamp,
         "url": url,
-    } 
-
+    }
     if category:
         update_data["category"] = category
     if summary is not None:
@@ -90,6 +88,7 @@ def add_datarecord(
     if hn_points is not None:
         update_data["hn_points"] = hn_points
 
+    # Aktualisiert oder fügt einen Datensatz in der DB hinzu
     db.collection("website").document(safe_url(url)).set(update_data, merge=True)
     print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
 
@@ -120,9 +119,9 @@ def get_unsent_entries():
         if not url or not isinstance(url, str):
             print(f"[WARN] Überspringe Eintrag ohne gültige URL: {data}")
             continue
-
+        
         entry = {
-            "doc_id": doc.id, 
+            "doc_id": doc.id,
             "url": url,
             "category": data.get("category"),
             "summary": data.get("summary"),
@@ -146,7 +145,7 @@ def mark_as_sent(entries):
         url = entry.get("url")
         if not url:
             print(f"[WARN] Kein URL-Feld für Eintrag: {entry}")
-            continue  
+            continue
         db.collection("website").document(safe_url(url)).update({"mail_sent": True})
 
     print(f"{len(entries)} Einträge wurden als gesendet markiert.")
@@ -200,7 +199,7 @@ def get_unprocessed_urls():
         urls.append(
             {
                 "url": data.get("url"),
-                "alert": data.get("alert", False), 
+                "alert": data.get("alert", False),
             }
         )
     return urls

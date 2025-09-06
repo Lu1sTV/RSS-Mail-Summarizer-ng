@@ -1,7 +1,7 @@
-""" Dieses Modul kümmert sich um das Erstellen und Versenden von E-Mails über die Gmail API.
+"""Dieses Modul kümmert sich um das Erstellen und Versenden von E-Mails über die Gmail API.
 Es wandelt die übergebenen Markdown-Inhalte in HTML um, erstellt einen Report im Markdown-Format
 und kann zusätzlich Anhänge verschicken. Außerdem markiert es verschickte Artikel
-in der Datenbank als gesendet. """
+in der Datenbank als gesendet."""
 
 import base64
 from email.mime.text import MIMEText
@@ -22,6 +22,7 @@ def send_mail(
     mail_body_file=None,
     attachment_filepath=None,
 ):
+    # Wenn eine Mail-Body-Datei angegeben ist, wird deren Inhalt als HTML formatiert und in die E-Mail eingefügt
     if mail_body_file:
         with open(mail_body_file, "r", encoding="utf-8") as md_file:
             markdown_content = md_file.read()
@@ -33,7 +34,6 @@ def send_mail(
         if subject:
             msg["Subject"] = subject
         msg.attach(MIMEText(html_content, "html"))
-
         if attachment_filepath:
             with open(attachment_filepath, "rb") as attachment:
                 part = MIMEBase("application", "octet-stream")
@@ -44,7 +44,7 @@ def send_mail(
                     "Content-Disposition", f"attachment; filename={filename}"
                 )
                 msg.attach(part)
-
+        # E-Mail über die Gmail API senden
         try:
             service = get_gmail_service()
             raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
@@ -61,6 +61,7 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
     """Erstellt eine Markdown-Datei mit allen neuen Artikeln, geordnet nach Kategorien und Subkategorien.
     Alerts haben keine Popularity-Angabe."""
     categorized_entries = {}
+    # Artikel nach Kategorie und Subkategorie gruppieren
     for url, details in summaries_and_categories.items():
         category = details.get("category") or "n/a"
         subcategory = details.get("subcategory") or "No Subcategory"
@@ -84,7 +85,7 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
         categorized_entries[category][subcategory].append(
             (summary, url, reading_time_text, popularity_text)
         )
-
+    # Markdown-Datei schreiben
     with open(markdown_report_path, "w", encoding="utf-8") as file:
         file.write("# News of the Day\n\n")
         for category, subcategories in categorized_entries.items():

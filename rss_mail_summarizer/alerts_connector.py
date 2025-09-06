@@ -69,7 +69,7 @@ def get_gmail_service():
             raise FileNotFoundError(
                 f"{CREDENTIALS_FILE} fehlt. Bitte erstellen oder in Cloud Secrets ablegen."
             )
-
+        # OAuth-Flow starten
         flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
         creds = flow.run_local_server(port=0)
 
@@ -92,7 +92,6 @@ def filter_links(links):
         r"alerts?s",
         r"alerts/share",
     ]
-
     filtered = []
     for link in links:
         if not any(re.search(pattern, link) for pattern in blacklist_patterns):
@@ -111,12 +110,11 @@ def get_label_id(service, label_name):
     return None
 
 
-# Listet alle Google Alerts auf
+""" Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
+markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück. """
+
 def list_google_alerts():
-    """
-    Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
-    markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück.
-    """
+
     service = get_gmail_service()
     all_urls = {}
 
