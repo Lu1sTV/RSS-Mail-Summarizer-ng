@@ -80,8 +80,63 @@ gcloud secrets add-iam-policy-binding rss-firebase-key \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-Anmerkung: Für den Alerts_Connector braucht es noch zwei weitere Secrets, diese müssen folgendermaßen bennant werden: credentials-token-json, credentials-credentials-json
-Und dann auch durch den gcloud secrets ... Befehl freigeschaltet werden.
+### Alerts Connector
+
+### Alerts Connector
+
+Der Alerts Connector ermöglicht es, automatisch Links aus Google Alerts E-Mails auszulesen, weiterzuverarbeiten und als erledigt zu markieren.  
+
+Folgende Schritte sind dazu notwendig:
+
+1. **Google Alerts einrichten**  
+   - Besuchen: [https://www.google.com/alerts](https://www.google.com/alerts)  
+   - Alert zu einem beliebigen Thema erstellen (z. B. *Carlo Masala*).  
+
+2. **Labels und Filter in Gmail anlegen**  
+   - Label erstellen:  
+     - `alerts-carlo-masala`  
+     - `alerts-carlo-masala-processed`  
+   - Filter erstellen:  
+     - Absender: `googlealerts-noreply@google.com`  
+     - Aktion: *Inbox überspringen*  
+     - Aktion: *Label anwenden* → `alerts-carlo-masala`  
+
+3. **Ordner `credentials` anlegen**  
+   - Auf oberster Ebene neben der `main.py`.  
+   - Der Ordner wird genutzt, um Zugangsdaten und Token zu speichern.  
+
+4. **`credentials.json` erstellen**  
+   - [Google Cloud Console](https://console.cloud.google.com/) öffnen.  
+   - **Gmail API aktivieren**:  
+     - Menü → APIs & Dienste → Bibliothek → "Gmail API" suchen → *Aktivieren*.  
+   - **OAuth-Zustimmungsbildschirm konfigurieren**:  
+     - Menü → APIs & Dienste → OAuth-Zustimmungsbildschirm → *Get Started*  
+     - Schritt 1: beliebige Werte eintragen  
+     - Schritt 2: *Extern* auswählen  
+     - Schritt 3: beliebige E-Mail-Adresse eintragen  
+   - **OAuth-Client anlegen**:  
+     - Menü → APIs & Dienste → Anmeldedaten → *Anmeldedaten erstellen* → OAuth-Client-ID  
+     - Anwendungstyp: *Desktop-App*  
+     - Name: `gmail-alerts-client`  
+   - JSON herunterladen  
+   - Datei im Ordner `credentials` speichern und in **`credentials.json`** umbenennen  
+
+5. **Token generieren**  
+   - Einmalig lokal ausführen:  
+     ```bash
+     python utils/create_gmail_token_locally.py
+     ```  
+   - Dadurch wird eine **`credentials/token.json`** erstellt.  
+   - Diese Datei enthält den Refresh-Token und wird für den automatisierten Zugriff benötigt.  
+
+
+
+**Hinweis:**  
+Wenn weitere Alerts erstellt werden, muss die **`alert_map`** in der Datei `alerts_connector.py` entsprechend erweitert werden.  
+Zusätzlich müssen die passenden Gmail-Labels (`alerts-<NAME>` und `alerts-<NAME>-processed`) angelegt werden.  
+
+
+---
 
 <!-- ```bash
 gcloud secrets add-iam-policy-binding SECRET_NAME \

@@ -19,6 +19,12 @@ TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
 SECRET_CREDENTIALS = "credentials-credentials-json"
 SECRET_TOKEN = "credentials-token-json"
 
+# labels in gmail müssen mit den Einträgen in dieser Map 1 zu 1 übereinstimmen.
+# es muss ein filter in gmail erstellt werden, der alle eingehenden alert mails zum jeweiligen label hinzufügt
+alert_map = {
+    "Carlo Masala": ("alerts-carlo-masala", "alerts-carlo-masala-processed"),
+}
+
 def get_secret(secret_name, project_id):
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
@@ -60,11 +66,7 @@ def get_gmail_service():
     return build("gmail", "v1", credentials=creds)
 
 # Wichtig:
-# labels in gmail müssen mit den Einträgen in dieser Map 1 zu 1 übereinstimmen.
-# es muss ein filter in gmail erstellt werden, der alle eingehenden alert mails zum jeweiligen label hinzufügt
-alert_map = {
-    "Carlo Masala": ("alerts-carlo-masala", "alerts-carlo-masala-processed"),
-}
+
 
 def filter_links(links):
     """
@@ -175,7 +177,7 @@ def list_google_alerts():
         print(f"Ein Fehler ist aufgetreten: {error}")
         return {}
 
-
+list_google_alerts()
 '''import os
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials

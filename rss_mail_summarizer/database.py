@@ -1,11 +1,14 @@
 from datetime import datetime
 import os
 import json
+
+from dotenv import load_dotenv
 from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
 from sentence_transformers import SentenceTransformer
 
+load_dotenv()
 # -- embedding model --
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
