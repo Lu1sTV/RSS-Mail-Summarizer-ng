@@ -153,7 +153,7 @@ gcloud secrets add-iam-policy-binding credentials-token-json \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding credentials-token-json \
-  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding credentials-credentials-json \
@@ -161,9 +161,22 @@ gcloud secrets add-iam-policy-binding credentials-credentials-json \
   --role="roles/secretmanager.secretAccessor"
 
 gcloud secrets add-iam-policy-binding credentials-credentials-json \
-  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
   --role="roles/secretmanager.secretAccessor"
 ```
+
+Zusätzlich muss dar oben für die .env erstellte API Schlüssel auch noch als Secret erstellt werden (gemini-api-key) und dem dann auch noch die entsprechenden Berechtigungen erteilt werden: 
+
+```bash
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding gemini-api-key \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
 
 **Hinweis:**  
 Wenn weitere Alerts erstellt werden, muss die **`alert_map`** in der Datei `alerts_connector.py` entsprechend erweitert werden.  
@@ -204,7 +217,7 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --role="roles/run.admin"  
 
 gcloud projects add-iam-policy-binding $PROJECT_ID \
-    --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com"
+    --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
     --role="roles/cloudbuild.builds.builder"      
 ```
 
