@@ -13,9 +13,24 @@ from langchain_core.prompts import ChatPromptTemplate
 from dotenv import load_dotenv
 import os
 from langchain_core.rate_limiters import InMemoryRateLimiter
+from google.cloud import secretmanager
 
 # Umgebungsvariablen laden
 load_dotenv()
+
+# Funktion zum Abrufen von Geheimnissen aus Google Secret Manager
+def get_secret(secret_name: str, version: str = "latest") -> str:
+    client = secretmanager.SecretManagerServiceClient()
+    project_id = os.getenv("PROJECT_ID")
+    name = f"projects/{project_id}/secrets/{secret_name}/versions/{version}"
+    response = client.access_secret_version(request={"name": name})
+    return response.payload.data.decode("UTF-8")
+
+# Gemini API-Schlüssel abrufen für Lokal und in Google Cloud Run
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    secret_name = os.getenv("GEMINI_SECRET_NAME")
+    GEMINI_API_KEY = get_secret(secret_name)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 rate_limiter = InMemoryRateLimiter(

@@ -39,8 +39,7 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
-      - --set-env-vars=PROJECT_ID=dhbw-projekt-467419,SENDER_EMAIL=projekt.dhbwrav@gmail.com,RECIPIENT_EMAIL=projekt.dhbwrav@gmail.com
-      - --set-secrets GEMINI_API_KEY=gemini-api-key:latest
+      - --set-env-vars=PROJECT_ID=dhbw-projekt-467419,SENDER_EMAIL=projekt.dhbwrav@gmail.com,RECIPIENT_EMAIL=projekt.dhbwrav@gmail.com,GEMINI_SECRET_NAME=gemini-api-key
 
   # Deploy call_alerts function
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
