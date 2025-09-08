@@ -18,26 +18,43 @@ from google.cloud import secretmanager
 # Umgebungsvariablen laden
 load_dotenv()
 
-# Funktion zum Abrufen von Geheimnissen aus Google Secret Manager
-def get_secret(secret_name: str, version: str = "latest") -> str:
+LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
+
+# Google Secret einholen wenn in Google ausgeführt
+def access_secret(secret_id: str, project_id: str):
     client = secretmanager.SecretManagerServiceClient()
-    project_id = os.getenv("PROJECT_ID")
-    name = f"projects/{project_id}/secrets/{secret_name}/versions/{version}"
+    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={"name": name})
     return response.payload.data.decode("UTF-8")
 
-# Gemini API-Schlüssel abrufen für Lokal und in Google Cloud Run
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    secret_name = os.getenv("GEMINI_SECRET_NAME")
-    GEMINI_API_KEY = get_secret(secret_name)
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# Gemini API Key abrufen (entweder aus Secret Manager oder lokale .env)
+def get_gemini_api_key():
+    project_id = os.environ["PROJECT_ID"]
+    secret_id = "gemini-api-key"
+
+    try:
+        # Wenn in Google:
+        api_key = access_secret(secret_id, project_id)
+        print("Using Gemini API key from Secret Manager")
+        return api_key
+    except Exception as e:
+        # Wenn lokale Ausführung:
+        api_key = os.getenv(LOCAL_GEMINI_KEY_ENV)
+        if not api_key:
+            raise RuntimeError(
+                f"Gemini API key not found in Secret Manager or local env. Reason: {e}"
+            )
+        print("Using Gemini API key from local .env")
+        return api_key
 
 rate_limiter = InMemoryRateLimiter(
     requests_per_second=0.2,
     check_every_n_seconds=0.1,
     max_bucket_size=1,
 )
+
+# Holt GEMINI_API_KEY entweder aus Secret Manager oder .env
+GEMINI_API_KEY = get_gemini_api_key()
 
 # Gemini initialisieren
 llm = ChatGoogleGenerativeAI(
