@@ -14,6 +14,12 @@ Um das Programm zu verwenden, müssen folgende Umgebungsvariablen in einer .env 
 
 - **RECIPIENT_EMAIL**: (Die Mail-Adresse welche die E-Mail erhalten soll)
 
+## Hinweise für die lokale Ausführung
+
+Eine lokale Codeausführung MUSS aufgrund der hinterlegten Filepaths von dem unterordner "rss_mail_summarizer" geschehen. Die Credentials und serviceAccountKey.json müssen außerdem an folgender Stelle hinterlegt sein:
+
+![file_tree in Repository](images/File_tree.png)
+
 ## Deployen:
 Zum eigenen deployen müssen die folgenden Schritte unternommen werden.
 
