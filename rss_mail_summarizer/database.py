@@ -20,7 +20,7 @@ from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter
 
 load_dotenv()
-SERVICE_ACCOUNT_KEY_PATH = "rss_mail_summarizer/serviceAccountKey.json"
+SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
 
 
 # Google Secret einholen wenn in Google ausgeführt

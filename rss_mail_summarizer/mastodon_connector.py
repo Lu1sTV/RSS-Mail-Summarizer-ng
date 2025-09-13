@@ -18,7 +18,6 @@ from database import add_url_to_website_collection, get_last_toot_id, save_last_
 
 MASTODON_INSTANCE_URL = "https://mstdn.social"
 TARGET_USERNAME = "pinboard_pop"
-#STATE_FILE = "last_toot_id.txt"
 
 
 # Holt neue Toots vom definierten Mastodon-Account und speichert enthaltene Links in der Datenbank

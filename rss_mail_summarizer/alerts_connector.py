@@ -23,7 +23,7 @@ from database import add_alert_to_website_collection
 # Google API Scopes und Dateipfade für Credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
-CREDENTIALS_DIR = "rss_mail_summarizer/credentials"
+CREDENTIALS_DIR = "credentials"
 CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
 
