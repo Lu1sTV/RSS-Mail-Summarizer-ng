@@ -13,12 +13,12 @@ import os
 import time
 
 #Imports eigener Funktionen
-from database import add_url_to_website_collection
+from database import add_url_to_website_collection, get_last_toot_id, save_last_toot_id
 
 
 MASTODON_INSTANCE_URL = "https://mstdn.social"
 TARGET_USERNAME = "pinboard_pop"
-STATE_FILE = "last_toot_id.txt"
+#STATE_FILE = "last_toot_id.txt"
 
 
 # Holt neue Toots vom definierten Mastodon-Account und speichert enthaltene Links in der Datenbank
@@ -37,12 +37,10 @@ def fetch_and_store_mastodon_links():
         user_id = account["id"]
         new_links = []
 
-        # Prüfen, ob es bereits eine gespeicherte letzte Toot-ID gibt
-        since_id = None
-        if os.path.exists(STATE_FILE):
-            with open(STATE_FILE, "r") as f:
-                since_id = f.read().strip()
-                print(f"Lade neue Toots seit ID {since_id} ...")
+        # Prüfen, ob es bereits eine im Firestore gespeicherte letzte Toot-ID gibt
+        since_id = get_last_toot_id()
+        if since_id:
+            print(f"Lade neue Toots seit ID {since_id} ...")
         else:
             print("Erster Lauf: 20 neueste Toots werden geladen.")
 
@@ -51,30 +49,27 @@ def fetch_and_store_mastodon_links():
         all_toots = list(toots)
 
         # Weitere Seiten abrufen, bis keine neuen Toots mehr vorhanden sind
-        while True:
-            next_page = mastodon.fetch_next(toots)
-            if not next_page:
-                break
+        # Nur Toots berücksichtigen, die neuer sind als since_id
+        # Und beim ersten Aufruf nicht paginieren, sondern nur die neuesten 20 holen
+        if since_id:
+            while True:
+                next_page = mastodon.fetch_next(toots)
+                if not next_page:
+                    break
 
-            # Nur Toots berücksichtigen, die neuer sind als since_id
-            if since_id:
                 filtered = [t for t in next_page if int(t["id"]) > int(since_id)]
-            else:
-                filtered = next_page
+                if not filtered:
+                    break
 
-            if not filtered:
-                break
-
-            all_toots.extend(filtered)
-            toots = next_page
+                all_toots.extend(filtered)
+                toots = next_page
 
         if not all_toots:
             print("Keine neuen Toots gefunden.")
             return
 
         latest_toot_id = max(int(toot["id"]) for toot in all_toots)
-        with open(STATE_FILE, "w") as f:
-            f.write(str(latest_toot_id))
+        save_last_toot_id(latest_toot_id)
 
         # Neue Toots verarbeiten und Links extrahieren
         for toot in all_toots:

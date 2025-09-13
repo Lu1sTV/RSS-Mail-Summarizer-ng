@@ -17,6 +17,7 @@ import firebase_admin
 from urllib.parse import urlparse, parse_qs, unquote
 import re
 from datetime import datetime
+from google.cloud.firestore_v1.base_query import FieldFilter
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "rss_mail_summarizer/serviceAccountKey.json"
@@ -212,4 +213,28 @@ def is_alert(url):
         data = doc_ref.to_dict()
         return data.get("alert", False)
     return False
+
+
+# Holt die höchste Toot-ID aus Firestore
+def get_last_toot_id():
+    docs = (
+        db.collection("mastodon_toots")
+        .order_by("toot_id", direction=firestore.Query.DESCENDING)
+        .limit(1)
+        .stream()
+    )
+
+    for doc in docs:
+        return doc.to_dict().get("toot_id")
+
+    return None
+
+
+# Speichert die aktuellste Toot-ID in Firestore
+def save_last_toot_id(toot_id: int):
+    data = {
+        "toot_id": int(toot_id),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    }
+    db.collection("mastodon_toots").add(data)
 

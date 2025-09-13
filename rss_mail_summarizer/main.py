@@ -36,6 +36,7 @@ from mastodon_connector import fetch_and_store_mastodon_links
 from send_mail import send_mail, create_markdown_report
 from utils.hn_popularity import fetch_hn_points
 
+load_dotenv()
 
 MARKDOWN_REPORT_PATH = "markdown_report.md"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
@@ -80,7 +81,6 @@ Hauptfunktion zur Verarbeitung der gespeicherten Links:
 def main(request=None):
     try:
         start_time = time.time()
-        load_dotenv()
 
         all_links = get_unprocessed_urls()
 
