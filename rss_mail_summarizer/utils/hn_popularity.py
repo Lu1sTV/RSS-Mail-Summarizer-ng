@@ -7,7 +7,7 @@ oder None, falls keine Ergebnisse gefunden werden oder ein Fehler auftritt."""
 import requests
 
 #Imports eigener Funktionen
-from logger import logger
+from .logger import logger
 
 """ Die Function ruft die Anzahl der Punkte eines Artikels auf Hacker News ab. Als Parameter wird die URL des gesuchten Artikels übergeben.
 Als maximale Wartezeit für die Anfrage können optional Sekunden angegeben werden. """

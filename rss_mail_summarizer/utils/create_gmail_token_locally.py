@@ -7,7 +7,7 @@ Dieses Token wird später benötigt, um auf die Gmail API zuzugreifen."""
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 #Imports eigener Funktionen
-from logger import logger
+from .logger import logger
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 

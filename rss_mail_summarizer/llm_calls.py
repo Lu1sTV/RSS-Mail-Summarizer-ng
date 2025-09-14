@@ -15,13 +15,7 @@ from dotenv import load_dotenv
 import os
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from google.cloud import secretmanager
-
-# Logging konfigurieren
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
+from utils.logger import logger
 
 # Umgebungsvariablen laden
 load_dotenv()

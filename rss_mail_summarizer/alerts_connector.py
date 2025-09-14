@@ -17,15 +17,7 @@ from google.cloud import secretmanager
 
 # Imports eigener Funktionen
 from database import add_alert_to_website_collection
-
-# --- Logging konfigurieren ---
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-numeric_level = getattr(logging, log_level, logging.INFO)
-logging.basicConfig(
-    level=numeric_level,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
+from utils.logger import logger
 
 # Google API Scopes und Dateipfade für Credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]

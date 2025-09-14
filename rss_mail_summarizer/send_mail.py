@@ -19,14 +19,7 @@ import os
 # Imports eigener Funktionen
 from alerts_connector import get_gmail_service
 from database import get_unsent_entries, mark_as_sent
-
-# Logging konfigurieren
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-numeric_level = getattr(logging, log_level, logging.INFO)
-logging.basicConfig(
-    level=numeric_level,
-    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-)
+from utils.logger import logger
 
 
 # Sendet eine E-Mail über die Gmail API, optional mit Markdown-Inhalt und Anhang

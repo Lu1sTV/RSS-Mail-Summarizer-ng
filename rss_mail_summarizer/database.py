@@ -19,13 +19,7 @@ from urllib.parse import urlparse, parse_qs, unquote
 import re
 from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter
-
-# Logging-Konfiguration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
+from utils.logger import logger
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"

@@ -15,14 +15,9 @@ import logging
 
 # Imports eigener Funktionen
 from database import add_url_to_website_collection, get_last_toot_id, save_last_toot_id
+from utils.logger import logger
 
 
-# Logging-Konfiguration
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger(__name__)
 
 
 MASTODON_INSTANCE_URL = "https://mstdn.social"
