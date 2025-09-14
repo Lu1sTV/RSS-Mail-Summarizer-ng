@@ -69,7 +69,6 @@ def send_mail(
             message = {"raw": raw_message}
             sent = service.users().messages().send(userId="me", body=message).execute()
             logger.info("E-Mail erfolgreich gesendet! Gmail API Message ID: %s", sent["id"])
-            mark_as_sent(get_unsent_entries())
         except Exception as e:
             logger.error("Fehler beim Senden der E-Mail über die Gmail API: %s", e, exc_info=True)
 

@@ -26,6 +26,7 @@ import os
 import time
 from dotenv import load_dotenv
 import functions_framework
+from concurrent.futures import ThreadPoolExecutor # Import für die parallele Ausführung
 
 # Imports eigener Funktionen
 from alerts_connector import list_google_alerts
@@ -34,9 +35,10 @@ from llm_calls import summarise_and_categorize_websites, summarise_alerts
 from mastodon_connector import fetch_and_store_mastodon_links
 from send_mail import send_mail, create_markdown_report
 from utils.hn_popularity import fetch_hn_points
-from utils.logger import logger 
+from utils.logger import logger
 
 load_dotenv()
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 MARKDOWN_REPORT_PATH = "markdown_report.md"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
@@ -96,9 +98,17 @@ def main(request=None):
             normal_links = [link["url"] for link in all_links if not link.get("alert")]
             if normal_links:
                 summaries_and_categories = summarise_and_categorize_websites(normal_links)
+
+                urls_to_fetch = list(summaries_and_categories.keys())
+                hn_points_dict = {}
+                with ThreadPoolExecutor(max_workers=10) as executor:
+                    results = executor.map(fetch_hn_points, urls_to_fetch)
+                    hn_points_dict = dict(zip(urls_to_fetch, results))
+
                 for url, result in summaries_and_categories.items():
-                    points = fetch_hn_points(url)
-                    result["hn_points"] = points
+                    # Punkte aus dem zuvor erstellten Dictionary holen
+                    result["hn_points"] = hn_points_dict.get(url)
+
                     add_datarecord(
                         url=url,
                         category=result.get("category"),
@@ -108,6 +118,7 @@ def main(request=None):
                         hn_points=result.get("hn_points"),
                         mail_sent=False
                     )
+
                 logger.info(f"{len(summaries_and_categories)} normale Links erfolgreich verarbeitet.")
 
             # Alert-Links separat verarbeiten
@@ -130,6 +141,7 @@ def main(request=None):
                 logger.info(f"{len(alert_summaries)} Alerts erfolgreich verarbeitet.")
 
         # Mailversand für ungesendete Artikel
+        logger.info("Starte Prozess für Mailversand")
         unsent_entries = get_unsent_entries()
 
         if not unsent_entries:
@@ -158,6 +170,7 @@ def main(request=None):
                 subject="Today's News",
                 mail_body_file=MARKDOWN_REPORT_PATH
             )
+
 
             mark_as_sent(unsent_entries)
 

@@ -103,7 +103,7 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
         update_data["processed"] = processed
 
     db.collection("website").document(safe_url(url)).set(update_data, merge=True)
-    logger.info(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
+    logger.info(f"Datensatz aktualisiert: {url}")
 
 
 # Prüft, ob eine URL bereits in der Datenbank existiert
@@ -155,7 +155,7 @@ def mark_as_sent(entries):
             continue
         db.collection("website").document(safe_url(url)).update({"mail_sent": True})
 
-    logger.info(f"{len(entries)} Einträge wurden als gesendet markiert.")
+    # logger.info(f"{len(entries)} Einträge wurden als gesendet markiert.")
 
 
 # Fügt eine neue unverarbeitete URL in die Datenbank ein

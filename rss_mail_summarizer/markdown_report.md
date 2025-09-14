@@ -1,14 +1,22 @@
 # News of the Day
 
+## Programming and Development
+
+- 🚀 This article argues that many "hard" LeetCode problems become significantly easier when considering the constraints on input size, which often allow for less optimal but simpler algorithms. It emphasizes that understanding these constraints can guide problem-solving by making O(N^2) or O(N^3) solutions viable for small N, contrary to typical theoretical worst-case analysis. The author uses examples like the "Maximum Product Subarray" to illustrate how real-world limits simplify complex algorithmic challenges. ([read in 7 min](https://buttondown.com/hillelwayne/archive/many-hard-leetcode-problems-are-easy-constraint/)) (647 points)
+
 ## Artificial Intelligence
 
-- 🔥 This article discusses how "attention" has become a critical metric in modern AI, particularly with transformer models, akin to "Big O" notation for computational complexity. It explains that while Big O measures computational resources, attention measures the cost of processing relationships between elements in a sequence. The author argues that understanding attention complexity is crucial for designing efficient and scalable AI systems. ([read in 7 min](https://alexchesser.medium.com/attention-is-the-new-big-o-9c68e1ae9b27)) (92 points)
+- 🔥 Consensus is an AI-powered search engine designed to extract and synthesize findings directly from scientific research papers. It aims to help users quickly find answers and understand the consensus on a topic without needing to read multiple full articles. The platform streamlines the research process, making evidence-based decision-making more accessible for academics, professionals, and the general public. ([read in 2 min](https://consensus.app/)) (126 points)
+
+## Entertainment and Lifestyle
+
+- The article advocates for the importance of embracing boredom as a crucial catalyst for creativity and self-reflection in an increasingly stimulated world. It argues that allowing our minds to wander during moments of idleness is essential for connecting disparate ideas and generating novel thoughts. Drawing on various insights, the piece suggests that intentionally seeking out and tolerating boredom can lead to deeper insights and a more fulfilling engagement with life. ([read in 6 min](https://kottke.org/25/09/you-need-to-be-bored-heres-why))
 
 ## Education and Learning
 
-- This Quanta Magazine article explores the scientific pursuit of life in extreme environments, where conditions were previously thought to be uninhabitable. It delves into astrobiological research, discussing discoveries of extremophiles on Earth and the implications for finding life beyond our planet. The article highlights the expanding understanding of life's resilience and adaptability. ([read in 7 min](https://www.quantamagazine.org/the-pursuit-of-life-where-it-seems-unimaginable-20250820/)) (3 points)
+- 🚀 This article critiques the often-misunderstood and "magical" interpretations of systems thinking, arguing that it is frequently used as a buzzword without a deep grasp of its principles. It highlights that while systems thinking can be a powerful tool for understanding complex problems, its misapplication often leads to vague solutions rather than rigorous analysis. The author emphasizes the need for a clear understanding of causal relationships and limitations to effectively apply systems thinking. ([read in 12 min](https://worksinprogress.co/issue/magical-systems-thinking/)) (277 points)
 
-## Technology and Gadgets
+## Politics
 
-- 🚀 AWS CEO Adam Selipsky believes that artificial intelligence will transform, but not eliminate, entry-level jobs in the tech sector. He suggests these roles will evolve to require new skills, emphasizing human creativity, judgment, and interpersonal interaction. The article highlights the necessity for continuous learning and upskilling to adapt to AI-driven changes, as AI automates repetitive tasks, allowing humans to focus on complex problem-solving. ([read in 4 min](https://www.theregister.com/2025/08/21/aws_ceo_entry_level_jobs_opinion/)) (1523 points)
+- The article discusses Charlie Kirk's inflammatory rhetoric, specifically his comments regarding the assassination of political opponents, and its dangerous implications for American political discourse. It argues that such extreme language, particularly from figures associated with the MAGA movement, normalizes violence and erodes democratic norms. The piece analyzes the escalating trajectory of political speech and the potential for real-world consequences stemming from these provocative statements. ([read in 8 min](https://www.thenation.com/article/politics/charlie-kirk-assassination-maga/#))
 

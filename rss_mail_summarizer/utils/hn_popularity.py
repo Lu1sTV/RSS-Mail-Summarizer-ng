@@ -29,12 +29,12 @@ def fetch_hn_points(url: str, timeout=8):
         hits = r.json().get("hits", [])
 
         if not hits:
-            logger.info(f"Keine Ergebnisse gefunden für URL: {url}")
+            logger.info(f"Keine HackerNews Ergebnisse gefunden für URL: {url}")
             return None
 
         best = max(hits, key=lambda x: (x.get("points") or 0))
         points = best.get("points") or 0
-        logger.info(f"Gefundene Story mit {points} Punkten für URL: {url}")
+        logger.info(f"Gefundene HackerNews Story mit {points} Punkten für URL: {url}")
 
         return points
     except requests.exceptions.Timeout:

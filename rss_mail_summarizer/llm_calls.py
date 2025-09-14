@@ -1,10 +1,3 @@
-"""
-Dieses Modul steuert die Interaktion mit Gemini.
-Es enthält Funktionen, um Webseiten anhand ihrer URLs zusammenzufassen, zu kategorisieren
-und relevante Themen sowie Lesezeit zu bestimmen.
-Für Google Alerts werden gesonderte Prompts verwendet, die kurze Zusammenfassungen liefern.
-"""
-
 # package imports
 import re
 import logging
@@ -25,11 +18,11 @@ LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
 
 # Google Secret einholen wenn in Google ausgeführt
 def access_secret(secret_id: str, project_id: str):
-    logger.debug(f"Accessing secret '{secret_id}' from project '{project_id}'...")
+    logger.debug(f"Greife auf Secret '{secret_id}' im Projekt '{project_id}' zu...")
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={"name": name})
-    logger.info(f"Secret '{secret_id}' successfully retrieved from Secret Manager.")
+    logger.info(f"Secret '{secret_id}' erfolgreich aus Secret Manager abgerufen.")
     return response.payload.data.decode("UTF-8")
 
 
@@ -39,24 +32,24 @@ def get_gemini_api_key():
     secret_id = "gemini-api-key"
 
     if not project_id:
-        logger.warning("PROJECT_ID not found in environment variables.")
+        logger.warning("PROJECT_ID nicht in den Umgebungsvariablen gefunden.")
 
     try:
         api_key = access_secret(secret_id, project_id)
-        logger.info("Using Gemini API key from Secret Manager")
+        logger.info("Verwende Gemini API-Key aus Secret Manager")
         return api_key
     except Exception as e:
         logger.warning(
-            f"Could not retrieve API key from Secret Manager (Reason: {e}). "
-            f"Falling back to local .env..."
+            f"Konnte API-Key nicht aus Secret Manager abrufen (Grund: {e}). "
+            f"Falle auf lokale .env zurück..."
         )
         api_key = os.getenv(LOCAL_GEMINI_KEY_ENV)
         if not api_key:
-            logger.error("Gemini API key not found in Secret Manager or local env.")
+            logger.error("Gemini API-Key weder im Secret Manager noch in .env gefunden.")
             raise RuntimeError(
-                f"Gemini API key not found in Secret Manager or local env. Reason: {e}"
+                f"Gemini API-Key weder im Secret Manager noch in .env gefunden. Grund: {e}"
             )
-        logger.info("Using Gemini API key from local .env")
+        logger.info("Verwende Gemini API-Key aus lokaler .env")
         return api_key
 
 
@@ -79,19 +72,19 @@ llm = ChatGoogleGenerativeAI(
     max_retries=2,
     rate_limiter=rate_limiter,
 )
-logger.info("Gemini LLM client successfully initialized.")
+logger.info("Gemini LLM-Client erfolgreich initialisiert.")
 
 
 # Führt den Workflow zur Summary und Kategorisierung einer Liste von URLs aus
 def summarise_and_categorize_websites(links_list):
-    logger.info(f"Starting summarization & categorization for {len(links_list)} URLs.")
+    logger.info(f"Starte Zusammenfassung & Kategorisierung für {len(links_list)} URLs.")
     prompt = build_prompt(links_list)
     return process_llm_response(prompt)
 
 
 # Erstellt den Prompt für Gemini, inkl. Anweisungen zu Zusammenfassung, Kategorie, Themen, Lesezeit
 def build_prompt(links_list):
-    logger.debug("Building prompt for Gemini request...")
+    logger.debug("Erstelle Prompt für Gemini-Anfrage...")
     combined_input = "\n\n".join(
         f"Input {i+1} (URL: {url})" for i, url in enumerate(links_list)
     )
@@ -149,13 +142,13 @@ def build_prompt(links_list):
         ]
     )
 
-    logger.debug("Prompt successfully built.")
+    logger.debug("Prompt erfolgreich erstellt.")
     return prompt
 
 
 # Verarbeitet die LLM-Ausgabe und extrahiert strukturierte Daten (Summary, Kategorie, Topics, Reading Time)
 def process_llm_response(prompt):
-    logger.info("Invoking Gemini LLM for summarization and categorization...")
+    logger.info("Rufe Gemini LLM zur Zusammenfassung und Kategorisierung auf...")
     chain = prompt | llm
     response = chain.invoke({}).content
 
@@ -166,7 +159,7 @@ def process_llm_response(prompt):
         if "Input" in entry:
             url_match = re.search(r"URL:\s*(https?://[^\s)]+)", entry, re.IGNORECASE)
             if not url_match:
-                logger.warning("URL could not be extracted from entry, skipping.")
+                logger.warning("URL konnte aus Eintrag nicht extrahiert werden, überspringe Eintrag.")
                 continue
 
             url = url_match.group(1)
@@ -195,7 +188,7 @@ def process_llm_response(prompt):
                 "reading_time": reading_time,
                 "subcategory": None,
             }
-            logger.debug(f"Processed entry for URL {url} with category '{category}'.")
+            logger.debug(f"Eintrag für URL {url} mit Kategorie '{category}' verarbeitet.")
 
             for topic in topics:
                 topic_counts[topic].append(url)
@@ -203,7 +196,7 @@ def process_llm_response(prompt):
     # Subkategorisierung basierend auf Themen
     for topic, urls in topic_counts.items():
         if len(urls) >= 3:
-            logger.info(f"Assigning subcategory '{topic}' to {len(urls)} URLs.")
+            logger.info(f"Subkategorie '{topic}' für {len(urls)} URLs zugewiesen.")
             for url in urls:
                 if results[url]["subcategory"] is None:
                     results[url]["subcategory"] = topic
@@ -213,10 +206,10 @@ def process_llm_response(prompt):
 
 # Erstellt Zusammenfassungen für Google Alerts (kürzerer Prompt, nur Summary + Reading Time)
 def summarise_alerts(alerts_dict):
-    logger.info(f"Starting summarization for {len(alerts_dict)} Google Alerts.")
+    logger.info(f"Starte Zusammenfassung für {len(alerts_dict)} Google Alerts.")
     all_results = {}
     for label, urls in alerts_dict.items():
-        logger.debug(f"Processing alert '{label}' with {len(urls)} URLs.")
+        logger.debug(f"Verarbeite Alert '{label}' mit {len(urls)} URLs.")
         combined_input = "\n".join(f"{url}" for url in urls)
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -247,7 +240,7 @@ def summarise_alerts(alerts_dict):
 
 # Erstellt den Prompt für die Google Alerts
 def build_alert_prompt(alerts_dict):
-    logger.debug("Building alert prompt...")
+    logger.debug("Erstelle Prompt für Google Alerts...")
     combined_input = "\n\n".join(
         f"{label} (URL: {url})" for label, url in alerts_dict.items()
     )
@@ -285,7 +278,7 @@ def build_alert_prompt(alerts_dict):
 
 # Verarbeitet die Gemini Antwort für Google Alerts und extrahiert Summary + Reading Time
 def process_alert_response(prompt, urls):
-    logger.info("Invoking Gemini LLM for Google Alerts summarization...")
+    logger.info("Rufe Gemini LLM für Google Alerts Zusammenfassung auf...")
     chain = prompt | llm
     response = chain.invoke({}).content
 
@@ -305,8 +298,8 @@ def process_alert_response(prompt, urls):
                     int(reading_time_match.group(1)) if reading_time_match else None
                 ),
             }
-            logger.debug(f"Processed alert entry for URL {url}.")
+            logger.debug(f"Eintrag für Alert-URL {url} verarbeitet.")
         else:
-            logger.warning("Could not extract URL from Gemini alert response entry.")
+            logger.warning("Konnte URL aus Gemini Alert-Antwort nicht extrahieren.")
 
     return results
