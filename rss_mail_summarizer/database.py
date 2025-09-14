@@ -143,7 +143,6 @@ def get_unsent_entries():
         entries.append(entry)
         logger.debug(f"Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
 
-    logger.info(f"Insgesamt {len(entries)} Einträge mit mail_sent=False gefunden.")
     return entries
 
 

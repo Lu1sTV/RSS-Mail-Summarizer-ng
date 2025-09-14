@@ -120,6 +120,5 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
                             line += f" {popularity_text}"
                         file.write(line + "\n")
                     file.write("\n")
-        logger.info("Markdown-Report erfolgreich erstellt: %s", markdown_report_path)
     except Exception as e:
         logger.error("Fehler beim Erstellen des Markdown-Reports: %s", e, exc_info=True)

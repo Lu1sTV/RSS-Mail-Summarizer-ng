@@ -160,7 +160,7 @@ def main(request=None):
             )
 
             mark_as_sent(unsent_entries)
-            logger.info("Artikel in der Datenbank als gesendet markiert.")
+
 
         elapsed_time = time.time() - start_time
         logger.info(f"Funktion erfolgreich abgeschlossen in {elapsed_time:.2f} Sekunden.")
