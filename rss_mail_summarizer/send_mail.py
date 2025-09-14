@@ -94,16 +94,13 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
             f"read in {reading_time} min" if reading_time else "read time n/a"
         )
 
-        popularity_text = (
-            f"(Popularity: {hn_points} points)" if hn_points and not is_alert else None
-        )
-
         if category not in categorized_entries:
             categorized_entries[category] = {}
         if subcategory not in categorized_entries[category]:
             categorized_entries[category][subcategory] = []
+
         categorized_entries[category][subcategory].append(
-            (summary, url, reading_time_text, popularity_text)
+            (summary, url, reading_time_text, hn_points, is_alert)
         )
 
     try:
@@ -114,11 +111,23 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
                 for subcategory, articles in subcategories.items():
                     if subcategory != "No Subcategory":
                         file.write(f"### {subcategory}\n\n")
-                    for summary, url, reading_time_text, popularity_text in articles:
-                        line = f"- {summary} ([{reading_time_text}]({url}))"
-                        if popularity_text:
-                            line += f" {popularity_text}"
+                    for summary, url, reading_time_text, hn_points, is_alert in articles:
+                        # Emoji basierend auf HN-Punkten bestimmen
+                        emoji = ""
+                        if hn_points and not is_alert:
+                            if hn_points >= 200:
+                                emoji = "🚀 "
+                            elif 50 <= hn_points < 200:
+                                emoji = "🔥 "
+
+                        line = f"- {emoji}{summary} ([{reading_time_text}]({url}))"
+
+                        # Punkte anhängen, falls vorhanden
+                        if hn_points and not is_alert:
+                            line += f" ({hn_points} points)"
+
                         file.write(line + "\n")
                     file.write("\n")
     except Exception as e:
         logger.error("Fehler beim Erstellen des Markdown-Reports: %s", e, exc_info=True)
+

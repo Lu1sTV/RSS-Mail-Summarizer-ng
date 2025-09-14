@@ -155,7 +155,7 @@ def main(request=None):
             send_mail(
                 sender_email=SENDER_EMAIL,
                 recipient_email=RECIPIENT_EMAIL,
-                subject="Zusammenfassung der heutigen Nachrichten",
+                subject="Today's News",
                 mail_body_file=MARKDOWN_REPORT_PATH
             )
 
