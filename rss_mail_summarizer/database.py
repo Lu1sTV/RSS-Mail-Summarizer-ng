@@ -7,9 +7,10 @@ Abrufen ungesendeter Artikel, Markieren als gesendet sowie Hilfsfunktionen wie
 das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links.
 """
 
-#package imports
+# package imports
 import os
 import json
+import logging
 from dotenv import load_dotenv
 from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
@@ -18,6 +19,13 @@ from urllib.parse import urlparse, parse_qs, unquote
 import re
 from datetime import datetime
 from google.cloud.firestore_v1.base_query import FieldFilter
+
+# Logging-Konfiguration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
@@ -40,12 +48,12 @@ def initialize_firebase():
     try:
         # Wenn in Google:
         service_account_key = access_secret(secret_id, project_id)
-        print("Initializing Firebase with secret from Secret Manager")
         service_account_info = json.loads(service_account_key)
         cred = credentials.Certificate(service_account_info)
+        logger.info("Firebase wird mit Secret aus Secret Manager initialisiert.")
     except Exception as e:
         # Wenn lokale Ausführung:
-        print(f"Falling back to local serviceAccountKey.json file. Reason: {e}")
+        logger.warning(f"Falle zurück auf lokale Datei {SERVICE_ACCOUNT_KEY_PATH}. Grund: {e}")
         cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
 
     if not firebase_admin._apps:
@@ -58,9 +66,8 @@ initialize_firebase()
 db = firestore.client()
 
 
-
 def safe_url(google_url: str) -> str:
-    # Google Redirect auf echte URL extrahieren
+    """Extrahiert echte URL aus Google Redirect und macht sie Firestore-kompatibel."""
     parsed = urlparse(google_url)
     qs = parse_qs(parsed.query)
     target = qs.get("url")
@@ -69,7 +76,6 @@ def safe_url(google_url: str) -> str:
     else:
         url = google_url
 
-    # Firestore-kompatible Zeichen erzeugen
     url = url.strip()
     url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
     url = re.sub(r"-+", "-", url)
@@ -79,7 +85,8 @@ def safe_url(google_url: str) -> str:
 
 
 # Fügt Einträge in die Datenbank ein oder aktualisiert bestehende Einträge
-def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None, mail_sent=False, hn_points=None, processed=None):
+def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None,
+                   mail_sent=False, hn_points=None, processed=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     update_data = {
         "processed": True,
@@ -101,9 +108,8 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
     if processed is not None:
         update_data["processed"] = processed
 
-
     db.collection("website").document(safe_url(url)).set(update_data, merge=True)
-    print(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
+    logger.info(f"Datensatz aktualisiert: {url} | Felder: {list(update_data.keys())}")
 
 
 # Prüft, ob eine URL bereits in der Datenbank existiert
@@ -114,11 +120,11 @@ def is_duplicate_url(url):
 
 # Holt alle Artikel, die noch nicht per Mail gesendet wurden
 def get_unsent_entries():
-    print("[INFO] Lade Einträge aus Firestore mit mail_sent=False ...")
+    logger.info("Lade Einträge aus Firestore mit mail_sent=False ...")
     try:
         query = db.collection("website").where("mail_sent", "==", False).stream()
     except Exception as e:
-        print(f"[ERROR] Fehler beim Abrufen der Einträge: {e}")
+        logger.error(f"Fehler beim Abrufen der Einträge: {e}")
         return []
 
     entries = []
@@ -127,7 +133,7 @@ def get_unsent_entries():
         url = data.get("url")
 
         if not url or not isinstance(url, str):
-            print(f"[WARN] Überspringe Eintrag ohne gültige URL: {data}")
+            logger.warning(f"Überspringe Eintrag ohne gültige URL: {data}")
             continue
 
         entry = {
@@ -141,9 +147,9 @@ def get_unsent_entries():
             "timestamp": data.get("timestamp"),
         }
         entries.append(entry)
-        print(f"[DEBUG] Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
+        logger.debug(f"Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
 
-    print(f"[INFO] Insgesamt {len(entries)} Einträge mit mail_sent=False gefunden.")
+    logger.info(f"Insgesamt {len(entries)} Einträge mit mail_sent=False gefunden.")
     return entries
 
 
@@ -152,12 +158,11 @@ def mark_as_sent(entries):
     for entry in entries:
         url = entry.get("url")
         if not url:
-            print(f"[WARN] Kein URL-Feld für Eintrag: {entry}")
+            logger.warning(f"Kein URL-Feld für Eintrag: {entry}")
             continue
         db.collection("website").document(safe_url(url)).update({"mail_sent": True})
 
-    print(f"{len(entries)} Einträge wurden als gesendet markiert.")
-
+    logger.info(f"{len(entries)} Einträge wurden als gesendet markiert.")
 
 
 # Fügt eine neue unverarbeitete URL in die Datenbank ein
@@ -172,9 +177,9 @@ def add_url_to_website_collection(url):
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             }
         )
-        print(f"Neue URL gespeichert: {url}")
+        logger.info(f"Neue URL gespeichert: {url}")
     else:
-        print(f"URL bereits vorhanden (wird ignoriert): {url}")
+        logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
 
 
 # Fügt oder aktualisiert eine Alert-URL mit Kategorie in der Datenbank
@@ -188,7 +193,7 @@ def add_alert_to_website_collection(url, category):
         "processed": False
     }
     doc_ref.set(update_data, merge=True)
-    print(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
+    logger.info(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
 
 
 # Holt alle unverarbeiteten URLs (inkl. Info ob es sich um Alerts handelt)
@@ -203,7 +208,6 @@ def get_unprocessed_urls():
             }
         )
     return urls
-
 
 
 # Prüft, ob eine bestimmte URL als Alert markiert ist
@@ -237,4 +241,4 @@ def save_last_toot_id(toot_id: int):
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     }
     db.collection("mastodon_toots").add(data)
-
+    logger.info(f"Neue Toot-ID gespeichert: {toot_id}")

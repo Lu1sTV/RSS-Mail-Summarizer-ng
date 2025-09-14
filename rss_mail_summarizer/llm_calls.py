@@ -5,8 +5,9 @@ und relevante Themen sowie Lesezeit zu bestimmen.
 Für Google Alerts werden gesonderte Prompts verwendet, die kurze Zusammenfassungen liefern.
 """
 
-#package imports
+# package imports
 import re
+import logging
 from collections import defaultdict
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -15,37 +16,55 @@ import os
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from google.cloud import secretmanager
 
+# Logging konfigurieren
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
+
 # Umgebungsvariablen laden
 load_dotenv()
 
 LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
 
+
 # Google Secret einholen wenn in Google ausgeführt
 def access_secret(secret_id: str, project_id: str):
+    logger.debug(f"Accessing secret '{secret_id}' from project '{project_id}'...")
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
     response = client.access_secret_version(request={"name": name})
+    logger.info(f"Secret '{secret_id}' successfully retrieved from Secret Manager.")
     return response.payload.data.decode("UTF-8")
+
 
 # Gemini API Key abrufen (entweder aus Secret Manager oder lokale .env)
 def get_gemini_api_key():
-    project_id = os.environ["PROJECT_ID"]
+    project_id = os.environ.get("PROJECT_ID")
     secret_id = "gemini-api-key"
 
+    if not project_id:
+        logger.warning("PROJECT_ID not found in environment variables.")
+
     try:
-        # Wenn in Google:
         api_key = access_secret(secret_id, project_id)
-        print("Using Gemini API key from Secret Manager")
+        logger.info("Using Gemini API key from Secret Manager")
         return api_key
     except Exception as e:
-        # Wenn lokale Ausführung:
+        logger.warning(
+            f"Could not retrieve API key from Secret Manager (Reason: {e}). "
+            f"Falling back to local .env..."
+        )
         api_key = os.getenv(LOCAL_GEMINI_KEY_ENV)
         if not api_key:
+            logger.error("Gemini API key not found in Secret Manager or local env.")
             raise RuntimeError(
                 f"Gemini API key not found in Secret Manager or local env. Reason: {e}"
             )
-        print("Using Gemini API key from local .env")
+        logger.info("Using Gemini API key from local .env")
         return api_key
+
 
 rate_limiter = InMemoryRateLimiter(
     requests_per_second=0.2,
@@ -66,16 +85,19 @@ llm = ChatGoogleGenerativeAI(
     max_retries=2,
     rate_limiter=rate_limiter,
 )
+logger.info("Gemini LLM client successfully initialized.")
 
 
 # Führt den Workflow zur Summary und Kategorisierung einer Liste von URLs aus
 def summarise_and_categorize_websites(links_list):
+    logger.info(f"Starting summarization & categorization for {len(links_list)} URLs.")
     prompt = build_prompt(links_list)
     return process_llm_response(prompt)
 
 
 # Erstellt den Prompt für Gemini, inkl. Anweisungen zu Zusammenfassung, Kategorie, Themen, Lesezeit
 def build_prompt(links_list):
+    logger.debug("Building prompt for Gemini request...")
     combined_input = "\n\n".join(
         f"Input {i+1} (URL: {url})" for i, url in enumerate(links_list)
     )
@@ -91,8 +113,8 @@ def build_prompt(links_list):
                 1. Summarize the content of the Website in about 3 sentences.
                 2. Categorize it into one of the following categories:
                    - Technology and Gadgets
-                   -Artificial Intelligence
-                   -Programming and Development
+                   - Artificial Intelligence
+                   - Programming and Development
                    - Politics
                    - Business and Finance
                    - Sports
@@ -109,7 +131,6 @@ def build_prompt(links_list):
                 - If content is a **GitHub Blog** Post, treat it like any other website, do not categorize it as "GitHub". Check the content of the page to determine if it is a blog post.
                 DO NOT use the "GitHub" category; choose from the normal list above if the post is a blog post. Only repositories should be categorized as "GitHub".
                 
-
                 If you are unable to access the contents of the provided website, return "Website content could not be reached!" for that input.
 
                 Format your response as follows:
@@ -134,30 +155,34 @@ def build_prompt(links_list):
         ]
     )
 
+    logger.debug("Prompt successfully built.")
     return prompt
 
 
 # Verarbeitet die LLM-Ausgabe und extrahiert strukturierte Daten (Summary, Kategorie, Topics, Reading Time)
 def process_llm_response(prompt):
+    logger.info("Invoking Gemini LLM for summarization and categorization...")
     chain = prompt | llm
     response = chain.invoke({}).content
 
-    # Parsed die Antwort und extrahiert die Informationen in ein Dictionary
     results = {}
     topic_counts = defaultdict(list)
 
-    # LLM-Antwort nach Abschnitten splitten und auslesen
     for entry in response.split("\n\n"):
         if "Input" in entry:
             url_match = re.search(r"URL:\s*(https?://[^\s)]+)", entry, re.IGNORECASE)
+            if not url_match:
+                logger.warning("URL could not be extracted from entry, skipping.")
+                continue
+
+            url = url_match.group(1)
             summary_match = re.search(r"Summary:\s*(.+)", entry, re.IGNORECASE)
             category_match = re.search(r"Category:\s*(.+)", entry, re.IGNORECASE)
             topics_match = re.search(r"Topics:\s*(.+)", entry, re.IGNORECASE)
             reading_time_match = re.search(
                 r"Reading\s*Time:\s*(\d+)\s*minute[s]?", entry, re.IGNORECASE
             )
-            # Felder extrahieren
-            url = url_match.group(1)
+
             summary = summary_match.group(1).strip() if summary_match else None
             category = category_match.group(1).strip() if category_match else None
             topics = (
@@ -176,14 +201,15 @@ def process_llm_response(prompt):
                 "reading_time": reading_time,
                 "subcategory": None,
             }
+            logger.debug(f"Processed entry for URL {url} with category '{category}'.")
 
-            # Sammelt Themen für spätere Subkategorisierung
             for topic in topics:
                 topic_counts[topic].append(url)
 
+    # Subkategorisierung basierend auf Themen
     for topic, urls in topic_counts.items():
-        # Wenn ein Thema in mindestens 3 Artikeln vorkommt, wird es als Subcategory verwendet
         if len(urls) >= 3:
+            logger.info(f"Assigning subcategory '{topic}' to {len(urls)} URLs.")
             for url in urls:
                 if results[url]["subcategory"] is None:
                     results[url]["subcategory"] = topic
@@ -191,12 +217,12 @@ def process_llm_response(prompt):
     return results
 
 
-
 # Erstellt Zusammenfassungen für Google Alerts (kürzerer Prompt, nur Summary + Reading Time)
 def summarise_alerts(alerts_dict):
+    logger.info(f"Starting summarization for {len(alerts_dict)} Google Alerts.")
     all_results = {}
-
     for label, urls in alerts_dict.items():
+        logger.debug(f"Processing alert '{label}' with {len(urls)} URLs.")
         combined_input = "\n".join(f"{url}" for url in urls)
         prompt = ChatPromptTemplate.from_messages(
             [
@@ -220,18 +246,14 @@ def summarise_alerts(alerts_dict):
                 ("human", combined_input),
             ]
         )
-        # Ergebnisse abrufen und mit Sammelergebnis zusammenführen
         result = process_alert_response(prompt, urls)
         all_results.update(result)
-
     return all_results
 
 
 # Erstellt den Prompt für die Google Alerts
 def build_alert_prompt(alerts_dict):
-    """
-    alerts_dict: Dictionary {label+url: url} für den Prompt
-    """
+    logger.debug("Building alert prompt...")
     combined_input = "\n\n".join(
         f"{label} (URL: {url})" for label, url in alerts_dict.items()
     )
@@ -266,14 +288,15 @@ def build_alert_prompt(alerts_dict):
     )
     return prompt
 
+
 # Verarbeitet die Gemini Antwort für Google Alerts und extrahiert Summary + Reading Time
 def process_alert_response(prompt, urls):
+    logger.info("Invoking Gemini LLM for Google Alerts summarization...")
     chain = prompt | llm
     response = chain.invoke({}).content
 
     results = {}
     for entry in response.split("\n\n"):
-        # URL aus dem Entry extrahieren
         url_match = re.search(r"(https?://\S+)", entry)
         summary_match = re.search(r"Summary:\s*(.+)", entry, re.IGNORECASE)
         reading_time_match = re.search(
@@ -288,5 +311,8 @@ def process_alert_response(prompt, urls):
                     int(reading_time_match.group(1)) if reading_time_match else None
                 ),
             }
+            logger.debug(f"Processed alert entry for URL {url}.")
+        else:
+            logger.warning("Could not extract URL from Gemini alert response entry.")
 
     return results

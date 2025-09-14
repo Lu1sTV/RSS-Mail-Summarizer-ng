@@ -6,14 +6,23 @@ Um doppelte Verarbeitung zu vermeiden, wird die zuletzt verarbeitete Toot-ID
 in einer Datei gespeichert und beim nächsten Lauf wiederverwendet.
 """
 
-#package Imports
+# package Imports
 from mastodon import Mastodon
 from bs4 import BeautifulSoup
 import os
 import time
+import logging
 
-#Imports eigener Funktionen
+# Imports eigener Funktionen
 from database import add_url_to_website_collection, get_last_toot_id, save_last_toot_id
+
+
+# Logging-Konfiguration
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 
 MASTODON_INSTANCE_URL = "https://mstdn.social"
@@ -23,33 +32,32 @@ TARGET_USERNAME = "pinboard_pop"
 # Holt neue Toots vom definierten Mastodon-Account und speichert enthaltene Links in der Datenbank
 def fetch_and_store_mastodon_links():
     start_time = time.time()
-    print("-- starting mastodon connector")
+    logger.info("Starte Mastodon-Connector...")
+
     mastodon = Mastodon(api_base_url=MASTODON_INSTANCE_URL)
 
     try:
         # Account anhand Username suchen
         account = mastodon.account_lookup(f"{TARGET_USERNAME}@mstdn.social")
         if not account:
-            print(f"Fehler: Benutzer {TARGET_USERNAME} nicht gefunden.")
+            logger.error(f"Benutzer {TARGET_USERNAME} nicht gefunden.")
             return
 
         user_id = account["id"]
         new_links = []
 
-        # Prüfen, ob es bereits eine im Firestore gespeicherte letzte Toot-ID gibt
+        # Prüfen, ob es bereits eine gespeicherte letzte Toot-ID gibt
         since_id = get_last_toot_id()
         if since_id:
-            print(f"Lade neue Toots seit ID {since_id} ...")
+            logger.info(f"Lade neue Toots seit ID {since_id} ...")
         else:
-            print("Erster Lauf: 20 neueste Toots werden geladen.")
+            logger.info("Erster Lauf: 20 neueste Toots werden geladen.")
 
         # Erste Abfrage von Toots (max. 20)
         toots = mastodon.account_statuses(user_id, limit=20, since_id=since_id)
         all_toots = list(toots)
 
-        # Weitere Seiten abrufen, bis keine neuen Toots mehr vorhanden sind
-        # Nur Toots berücksichtigen, die neuer sind als since_id
-        # Und beim ersten Aufruf nicht paginieren, sondern nur die neuesten 20 holen
+        # Weitere Seiten abrufen, nur wenn since_id gesetzt ist
         if since_id:
             while True:
                 next_page = mastodon.fetch_next(toots)
@@ -64,11 +72,12 @@ def fetch_and_store_mastodon_links():
                 toots = next_page
 
         if not all_toots:
-            print("Keine neuen Toots gefunden.")
+            logger.info("Keine neuen Toots gefunden.")
             return
 
         latest_toot_id = max(int(toot["id"]) for toot in all_toots)
         save_last_toot_id(latest_toot_id)
+        logger.info(f"Gespeicherte letzte Toot-ID: {latest_toot_id}")
 
         # Neue Toots verarbeiten und Links extrahieren
         for toot in all_toots:
@@ -83,14 +92,14 @@ def fetch_and_store_mastodon_links():
                     add_url_to_website_collection(href)
                     new_links.append(href)
 
-        print(f"{len(new_links)} neue Links gespeichert.")
+        logger.info(f"{len(new_links)} neue Links gespeichert.")
 
     except Exception as e:
-        print(f"Fehler bei Mastodon-Abruf: {e}")
+        logger.exception(f"Fehler bei Mastodon-Abruf: {e}")
 
     finally:
         duration = time.time() - start_time
-        print(f"-- mastodon-connector dauerte {duration:.2f} Sekunden.")
+        logger.info(f"Mastodon-Connector abgeschlossen in {duration:.2f} Sekunden.")
 
 
 if __name__ == "__main__":

@@ -2,23 +2,30 @@
 Dieses Modul verbindet sich mit der Gmail API, um automatisch Google Alerts E-Mails
 auszulesen. Die enthaltenen Links werden extrahiert und irrelevante Links werden gefiltert.
 Anschließend werden die übrigen Links in der Firestore-Datenbank gespeichert.
-
-
 """
 
-#package imports
+# package imports
 import os
+import logging
+import base64
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-import base64
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
 from google.cloud import secretmanager
 
-#Imports eigener Funktionen
+# Imports eigener Funktionen
 from database import add_alert_to_website_collection
 
+# --- Logging konfigurieren ---
+log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+numeric_level = getattr(logging, log_level, logging.INFO)
+logging.basicConfig(
+    level=numeric_level,
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
+logger = logging.getLogger(__name__)
 
 # Google API Scopes und Dateipfade für Credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -38,6 +45,7 @@ alert_map = {
 
 # Holt ein Secret aus dem Google Secret Manager
 def get_secret(secret_name, project_id):
+    logger.debug("Hole Secret '%s' aus Projekt '%s'", secret_name, project_id)
     client = secretmanager.SecretManagerServiceClient()
     name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
     response = client.access_secret_version(request={"name": name})
@@ -50,16 +58,18 @@ def ensure_credentials():
     project_id = os.environ["PROJECT_ID"]
 
     if not os.path.exists(CREDENTIALS_FILE):
-        print("credentials.json not found. Fetching from Secret Manager...")
+        logger.warning("credentials.json nicht gefunden – hole aus Secret Manager")
         creds_data = get_secret(SECRET_CREDENTIALS, project_id)
         with open(CREDENTIALS_FILE, "w") as f:
             f.write(creds_data)
+        logger.info("credentials.json erfolgreich angelegt")
 
     if not os.path.exists(TOKEN_FILE):
-        print("token.json not found. Fetching from Secret Manager...")
+        logger.warning("token.json nicht gefunden – hole aus Secret Manager")
         token_data = get_secret(SECRET_TOKEN, project_id)
         with open(TOKEN_FILE, "w") as f:
             f.write(token_data)
+        logger.info("token.json erfolgreich angelegt")
 
 
 # Erstellt und gibt einen Gmail API Service zurück
@@ -68,19 +78,23 @@ def get_gmail_service():
 
     creds = None
     if os.path.exists(TOKEN_FILE):
+        logger.debug("Lade Credentials aus token.json")
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
     else:
         if not os.path.exists(CREDENTIALS_FILE):
+            logger.error("%s fehlt. Bitte Datei bereitstellen oder in Cloud Secrets ablegen.", CREDENTIALS_FILE)
             raise FileNotFoundError(
                 f"{CREDENTIALS_FILE} fehlt. Bitte erstellen oder in Cloud Secrets ablegen."
             )
-        # OAuth-Flow starten
+        logger.info("Starte OAuth-Flow für Gmail API")
         flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
         creds = flow.run_local_server(port=0)
 
         with open(TOKEN_FILE, "w") as token:
             token.write(creds.to_json())
+        logger.info("Neues token.json erstellt")
 
+    logger.info("Gmail Service erfolgreich initialisiert")
     return build("gmail", "v1", credentials=creds)
 
 
@@ -93,9 +107,9 @@ def filter_links(links):
         "alerts",
         "alerts/share"
     ]
-    return [link for link in links if not any(b in link for b in blacklist)]
-
-
+    filtered = [link for link in links if not any(b in link for b in blacklist)]
+    logger.debug("Links gefiltert: %d → %d", len(links), len(filtered))
+    return filtered
 
 
 # Holt die Gmail Label-ID anhand des Label-Namens
@@ -104,7 +118,9 @@ def get_label_id(service, label_name):
     labels = service.users().labels().list(userId="me").execute().get("labels", [])
     for label in labels:
         if label["name"] == label_name:
+            logger.debug("Label-ID für '%s' gefunden: %s", label_name, label["id"])
             return label["id"]
+    logger.warning("Label '%s' nicht gefunden", label_name)
     return None
 
 
@@ -113,6 +129,7 @@ Ruft alle Mails für alle Alerts in alert_map ab, extrahiert URLs aus HTML,
 markiert sie als 'processed' und gibt eine Map mit allen URLs pro Alert zurück.
 """
 def list_google_alerts():
+    logger.info("Starte Abfrage der Google Alerts")
 
     service = get_gmail_service()
     all_urls = {}
@@ -120,12 +137,18 @@ def list_google_alerts():
     try:
         for alias, (label_name, processed_label_name) in alert_map.items():
             found_urls = []
+            logger.info("Verarbeite Alert '%s'", alias)
 
             # Label-IDs abrufen
             label_id = get_label_id(service, label_name)
             processed_label_id = get_label_id(service, processed_label_name)
             if not label_id or not processed_label_id:
-                print(f"Label '{label_name}' oder '{processed_label_name}' existiert nicht. Überspringe {alias}.")
+                logger.warning(
+                    "Labels '%s' oder '%s' existieren nicht – überspringe %s",
+                    label_name,
+                    processed_label_name,
+                    alias,
+                )
                 continue
 
             # Mails mit Label abrufen
@@ -137,7 +160,7 @@ def list_google_alerts():
             )
 
             messages = results.get("messages", [])
-            print(f"[{alias}] {len(messages)} Nachrichten gefunden.")
+            logger.info("[%s] %d Nachrichten gefunden", alias, len(messages))
 
             for m in messages:
                 msg = service.users().messages().get(
@@ -157,7 +180,7 @@ def list_google_alerts():
                 # URLs aus HTML href-Attributen extrahieren
                 soup = BeautifulSoup(body_html, "html.parser")
                 links_in_mail = [a_tag["href"] for a_tag in soup.find_all("a", href=True)]
-                print(f"[{alias}] → {len(links_in_mail)} Links gefunden.")
+                logger.debug("[%s] %d Links extrahiert", alias, len(links_in_mail))
 
                 # Blacklist filtern
                 links_in_mail = filter_links(links_in_mail)
@@ -165,6 +188,7 @@ def list_google_alerts():
                 # URLs in DB speichern
                 for url in links_in_mail:
                     add_alert_to_website_collection(url, category=alias)
+                    logger.debug("[%s] URL gespeichert: %s", alias, url)
 
                 found_urls.extend(links_in_mail)
 
@@ -177,20 +201,18 @@ def list_google_alerts():
                         "removeLabelIds": [label_id],
                     },
                 ).execute()
-                print(f"[{alias}] → Label geändert ({label_name} → {processed_label_name})")
+                logger.debug("[%s] Label geändert (%s → %s)", alias, label_name, processed_label_name)
 
             # Duplikate entfernen
             all_urls[alias] = list(set(found_urls))
-            print(f"[{alias}] Gesamt {len(all_urls[alias])} eindeutige Links extrahiert.\n")
+            logger.info("[%s] Gesamt %d eindeutige Links extrahiert", alias, len(all_urls[alias]))
 
         return all_urls
 
     except HttpError as error:
-        print(f"Ein Fehler ist aufgetreten: {error}")
+        logger.error("Ein Fehler ist aufgetreten: %s", error, exc_info=True)
         return {}
 
 
 if __name__ == "__main__":
     list_google_alerts()
-
-
