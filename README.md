@@ -14,6 +14,8 @@ Um das Programm zu verwenden, müssen folgende Umgebungsvariablen in einer .env 
 
 - **RECIPIENT_EMAIL**: (Die Mail-Adresse welche die E-Mail erhalten soll)
 
+- **LOG_LEVEL**: Hier kann zwischen DEBUG, INFO, WARNING and ERROR unterschieden werden. Wenn nichts gesetzt wird, wird automatisch INFO verwendet. 
+
 ## Hinweise für die lokale Ausführung
 
 Eine lokale Codeausführung MUSS aufgrund der hinterlegten Filepaths von dem unterordner "rss_mail_summarizer" geschehen. Die Credentials und serviceAccountKey.json müssen außerdem an folgender Stelle hinterlegt sein:
@@ -26,6 +28,7 @@ Zum eigenen deployen müssen die folgenden Schritte unternommen werden.
 ### Veränderungen im Code:
 Bei der rss-mail-summarizer/cloudbuild.yaml müssen die PROJECT_ID Werte, SENDER_EMAIL und RECIPIENT_EMAIL ersetzt werden. 
 (Für eine lokale Ausführung in .env PROJECT_ID=IHRE_PROJECT_ID hinterlegen etc.)
+Außerdem kann das LOG_LEVEL verändert werden, zur Auswahl stehen: DEBUG, INFO, WARNING and ERROR. Als Default Wert ist in der Cloudbuild.yaml DEBUG hinterlegt.
 
 ### APIs Aktivieren:
 Für die weitere Bearbeitung müssen einige der APIs aktiviert werden. Am einfachsten geht das mit der Google Console (in der Webanwendung oder durch herunterladen einer entsprechenden Software in der eigenen Konsole):
