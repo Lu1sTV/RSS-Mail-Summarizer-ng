@@ -42,7 +42,7 @@ MARKDOWN_REPORT_PATH = "markdown_report.md"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
-
+print("test")
 
 def mastodon_connector_activate(request):
     fetch_and_store_mastodon_links()
