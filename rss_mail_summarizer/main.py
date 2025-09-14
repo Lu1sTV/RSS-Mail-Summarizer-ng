@@ -24,7 +24,6 @@ Lokales Testen:
 # package imports
 import os
 import time
-import logging
 from dotenv import load_dotenv
 import functions_framework
 
@@ -35,7 +34,7 @@ from llm_calls import summarise_and_categorize_websites, summarise_alerts
 from mastodon_connector import fetch_and_store_mastodon_links
 from send_mail import send_mail, create_markdown_report
 from utils.hn_popularity import fetch_hn_points
-
+from utils.logger import logger 
 
 load_dotenv()
 
@@ -43,32 +42,24 @@ MARKDOWN_REPORT_PATH = "markdown_report.md"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 
-#Setup des Loggings
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
-logging.basicConfig(
-    level=getattr(logging, log_level, logging.INFO),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
-logger = logging.getLogger(__name__)
-
 def mastodon_connector_activate(request):
     try:
-        logger.debug("Activating Mastodon connector...")
+        logger.debug("Starte Mastodon-Connector...")
         fetch_and_store_mastodon_links()
-        logger.info("Mastodon connector executed successfully.")
+        logger.info("Mastodon-Connector erfolgreich ausgeführt.")
         return "OK", 200
     except Exception as e:
-        logger.error(f"Error in mastodon_connector_activate(): {e}")
+        logger.error(f"Fehler in mastodon_connector_activate(): {e}")
         return f"Fehler: {e}", 500
 
 @functions_framework.http
 def call_alerts(request=None):
     try:
         urls = list_google_alerts()
-        logger.info(f"Alerts erfolgreich verarbeitet: {urls}")
+        logger.info(f"Alerts erfolgreich abgerufen: {urls}")
         return {"status": "ok", "urls": urls}, 200
     except Exception as e:
-        logger.error(f"Unhandled exception in call_alerts(): {e}")
+        logger.error(f"Unerwarteter Fehler in call_alerts(): {e}")
         return f"Fehler: {e}", 500
 
 
@@ -101,7 +92,7 @@ def main(request=None):
         else:
             logger.info(f"{len(all_links)} neue Links in der Datenbank gefunden.")
 
-            # Normale Links (ohne alerts)
+            # Normale Links (ohne Alerts)
             normal_links = [link["url"] for link in all_links if not link.get("alert")]
             if normal_links:
                 summaries_and_categories = summarise_and_categorize_websites(normal_links)
@@ -138,7 +129,7 @@ def main(request=None):
                     )
                 logger.info(f"{len(alert_summaries)} Alerts erfolgreich verarbeitet.")
 
-        # Mailversand für normale ungesendete Artikel
+        # Mailversand für ungesendete Artikel
         unsent_entries = get_unsent_entries()
 
         if not unsent_entries:
@@ -159,24 +150,24 @@ def main(request=None):
             }
 
             create_markdown_report(summaries_from_db, MARKDOWN_REPORT_PATH)
-            logger.info("Markdown Report erstellt.")
+            logger.info("Markdown-Report erstellt.")
 
             send_mail(
                 sender_email=SENDER_EMAIL,
                 recipient_email=RECIPIENT_EMAIL,
-                subject="News of the day summarized",
+                subject="Zusammenfassung der heutigen Nachrichten",
                 mail_body_file=MARKDOWN_REPORT_PATH
             )
 
             mark_as_sent(unsent_entries)
-            logger.info("Artikel in der DB als gesendet markiert.")
+            logger.info("Artikel in der Datenbank als gesendet markiert.")
 
         elapsed_time = time.time() - start_time
-        logger.info(f"Funktion abgeschlossen in {elapsed_time:.2f} Sekunden.")
+        logger.info(f"Funktion erfolgreich abgeschlossen in {elapsed_time:.2f} Sekunden.")
         return "Funktion erfolgreich ausgeführt", 200
 
     except Exception as e:
-        logger.error(f"Unhandled exception in main(): {e}")
+        logger.error(f"Unerwarteter Fehler in main(): {e}")
         return f"Fehler: {e}", 500
 
 
