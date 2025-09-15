@@ -2,7 +2,7 @@ steps:
   # Install deps (optional but useful to validate requirements)
   - name: 'python:3.11'
     entrypoint: pip
-    args: ['install', '-r', 'rss_mail_summarizer/requirements.txt']
+    args: ['install', '-r', 'rss_mail_summarizer/requirements.txt', '--target', '/workspace']
 
   # Deploy mastodon_connector function
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -25,6 +25,7 @@ steps:
   # Deploy rss_mail_summarizer_main function
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
+    secretEnv: ['SENDER_EMAIL', 'RECIPIENT_EMAIL']
     args:
       - functions
       - deploy
@@ -58,7 +59,7 @@ steps:
       - --timeout=120s
       - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
 
-# Hier werden die Secrets eingebunden
+# Hier werden die Secrets verfügbar gemacht
 availableSecrets:
   secretManager:
     - versionName: projects/${PROJECT_ID}/secrets/sender-email/versions/latest
