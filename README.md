@@ -108,10 +108,7 @@ gcloud secrets add-iam-policy-binding rss-firebase-key \
 ```
 ## Recipient and Sender Email
 
-It is necessary to set two further secrets with the Recipient and Sender Email. 
-Their names in Secret Manager are recipient-email and sender-email
-
-Then they need to be granted these permissions:
+Es ist notwendig, zwei weitere Secrets für die Empfänger- und Absender-E-Mail zu setzen. Ihre Namen im Secret Manager sind recipient-email und sender-email. Anschließend müssen ihnen diese Berechtigungen gewährt werden.
 
 ```bash
 gcloud secrets add-iam-policy-binding recipient-email \
