@@ -26,7 +26,6 @@ load_dotenv()
 
 LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
 
-
 # Unterscheidet zwischen lokaler ausführung und nutzung der environment Variable 
 # oder Nutzung der vom Cloud Build mitgegebenen Werte
 def get_gemini_api_key():

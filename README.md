@@ -106,7 +106,30 @@ gcloud secrets add-iam-policy-binding rss-firebase-key \
   --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
   --role="roles/datastore.user"
 ```
+## Recipient and Sender Email
 
+It is necessary to set two further secrets with the Recipient and Sender Email. 
+Their names in Secret Manager are recipient-email and sender-email
+
+Then they need to be granted these permissions:
+
+```bash
+gcloud secrets add-iam-policy-binding recipient-email \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding recipient-email \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding sender-email \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding sender-email \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
 
 ### Alerts Connector
 
