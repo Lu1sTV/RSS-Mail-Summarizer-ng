@@ -22,11 +22,8 @@ from utils.logger import logger
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
 
-
-# Google Secret einholen wenn in Google ausgeführt
-import os
-
-import os
+print("ENV KEYS:", list(os.environ.keys()))
+print("RSS_FIREBASE_KEY exists?", "RSS_FIREBASE_KEY" in os.environ)
 
 def access_secret(secret_id: str, project_id: str = None) -> str:
     """
