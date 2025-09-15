@@ -4,3 +4,4 @@ __pycache__/
 rss_mail_summarizer/.env
 rss_mail_summarizer/serviceAccountKey.json
 rss_mail_summarizer/credentials
+rss_mail_summarizer/utils/serviceAccountKey.json
