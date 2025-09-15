@@ -1,7 +1,7 @@
 # RSS Mail Summarizer:
 Der RSS Mail Summarizer sammelt automatisch neue Beiträge aus dem Mastodon-Kanal pinboard.pop sowie alle Artikel zu Carlo Masala, die über Google Alerts gefunden werden, fasst sie zusammen und versendet die Ergebnisse zweimal täglich per Gmail. Die einzelnen Artikel werden thematisch geordnet, mit einer geschätzten Lesezeit versehen und – falls verfügbar – um die jeweilige Punktezahl auf Hacker News ergänzt.
 
-Bitte beim lokalen ausführen des Codes aufpassen, dass dies aus dem root Folder (RSS-MAIL-SUMMARIZER) geschieht und nicht aus rss_mail_summarizer oder einem der anderen Unterordner, denn die Filepfade sind entsprechend im Code angegeben.
+Bitte beim lokalen ausführen des Codes aufpassen, dass dies aus dem Folder **rss_mail_summarizer** geschieht und nicht aus dem root folder oder einem der anderen Unterordner, denn die Filepfade sind entsprechend im Code angegeben.
 
 ## .env File:
 Um das Programm zu verwenden, müssen folgende Umgebungsvariablen in einer .env file hinterlegt werden:
