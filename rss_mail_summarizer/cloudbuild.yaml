@@ -4,9 +4,10 @@ steps:
     entrypoint: pip
     args: ['install', '-r', 'rss_mail_summarizer/requirements.txt', '--target', '/workspace']
 
-  # Deploy mastodon_connector function
+  # Deploy mastodon_connector function (braucht rss-firebase-key)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
+    secretEnv: ['RSS_FIREBASE_KEY']
     args:
       - functions
       - deploy
@@ -20,12 +21,12 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
-      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
+      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},RSS_FIREBASE_KEY=$$RSS_FIREBASE_KEY,LOG_LEVEL=DEBUG
 
-  # Deploy rss_mail_summarizer_main function
+  # Deploy rss_mail_summarizer_main function (braucht viele Secrets)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
-    secretEnv: ['SENDER_EMAIL', 'RECIPIENT_EMAIL']
+    secretEnv: ['CREDENTIALS_CREDENTIALS_JSON', 'CREDENTIALS_TOKEN_JSON', 'GEMINI_API_KEY', 'RECIPIENT_EMAIL', 'RSS_FIREBASE_KEY', 'RSS_VERTEX_AI_KEY', 'SENDER_EMAIL']
     args:
       - functions
       - deploy
@@ -39,11 +40,12 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
-      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},SENDER_EMAIL=$$SENDER_EMAIL,RECIPIENT_EMAIL=$$RECIPIENT_EMAIL,LOG_LEVEL=DEBUG
+      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},CREDENTIALS_CREDENTIALS_JSON=$$CREDENTIALS_CREDENTIALS_JSON,CREDENTIALS_TOKEN_JSON=$$CREDENTIALS_TOKEN_JSON,GEMINI_API_KEY=$$GEMINI_API_KEY,RECIPIENT_EMAIL=$$RECIPIENT_EMAIL,RSS_FIREBASE_KEY=$$RSS_FIREBASE_KEY,RSS_VERTEX_AI_KEY=$$RSS_VERTEX_AI_KEY,SENDER_EMAIL=$$SENDER_EMAIL,LOG_LEVEL=DEBUG
 
-  # Deploy call_alerts function
+  # Deploy call_alerts function (braucht credentials + rss-firebase-key)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
+    secretEnv: ['CREDENTIALS_CREDENTIALS_JSON', 'CREDENTIALS_TOKEN_JSON', 'RSS_FIREBASE_KEY']
     args:
       - functions
       - deploy
@@ -57,15 +59,25 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
-      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
+      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},CREDENTIALS_CREDENTIALS_JSON=$$CREDENTIALS_CREDENTIALS_JSON,CREDENTIALS_TOKEN_JSON=$$CREDENTIALS_TOKEN_JSON,RSS_FIREBASE_KEY=$$RSS_FIREBASE_KEY,LOG_LEVEL=DEBUG
 
-# Hier werden die Secrets verfügbar gemacht
+# Alle Secrets verfügbar machen
 availableSecrets:
   secretManager:
-    - versionName: projects/${PROJECT_ID}/secrets/sender-email/versions/latest
-      env: 'SENDER_EMAIL'
+    - versionName: projects/${PROJECT_ID}/secrets/credentials-credentials-json/versions/latest
+      env: 'CREDENTIALS_CREDENTIALS_JSON'
+    - versionName: projects/${PROJECT_ID}/secrets/credentials-token-json/versions/latest
+      env: 'CREDENTIALS_TOKEN_JSON'
+    - versionName: projects/${PROJECT_ID}/secrets/gemini-api-key/versions/latest
+      env: 'GEMINI_API_KEY'
     - versionName: projects/${PROJECT_ID}/secrets/recipient-email/versions/latest
       env: 'RECIPIENT_EMAIL'
+    - versionName: projects/${PROJECT_ID}/secrets/rss-firebase-key/versions/latest
+      env: 'RSS_FIREBASE_KEY'
+    - versionName: projects/${PROJECT_ID}/secrets/rss-vertex-ai-key/versions/latest
+      env: 'RSS_VERTEX_AI_KEY'
+    - versionName: projects/${PROJECT_ID}/secrets/sender-email/versions/latest
+      env: 'SENDER_EMAIL'
 
 options:
   logging: CLOUD_LOGGING_ONLY
