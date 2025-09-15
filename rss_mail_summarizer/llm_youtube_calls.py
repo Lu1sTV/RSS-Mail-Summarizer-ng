@@ -16,29 +16,12 @@ from dotenv import load_dotenv
 import os
 from urllib.parse import urlparse, parse_qs, unquote
 import sys
+from google import genai
+from google.genai import types
 
 
 # Eigene Funktionen
 from utils.logger import logger
-
-# Separater Import von genai
-try:
-    from google import genai
-    from google.genai import types
-    logger.info("google.generativeai erfolgreich importiert (lokal oder Standardpfad).")
-except ImportError:
-    logger.warning(
-        "Standard-Import von google.generativeai fehlgeschlagen. "
-        "Versuche, '/workspace' zu sys.path hinzuzufügen..."
-    )
-    sys.path.append("/workspace")
-    try:
-        from google import genai
-        from google.genai import types
-        logger.info("google.generativeai erfolgreich aus '/workspace' importiert.")
-    except ImportError as e:
-        logger.error(f"Import von google.generativeai ist fehlgeschlagen: {e}")
-        raise
 
 load_dotenv()
 
