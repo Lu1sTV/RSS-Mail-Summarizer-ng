@@ -26,14 +26,22 @@ SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
 # Google Secret einholen wenn in Google ausgeführt
 import os
 
+import os
+
 def access_secret(secret_id: str, project_id: str = None) -> str:
-    """Fetch secret from environment variables (Variante A)."""
-    # project_id bleibt als Parameter erhalten, damit der Funktionsaufruf kompatibel bleibt,
-    # wird hier aber nicht mehr benötigt.
-    try:
-        return os.environ[secret_id]
-    except KeyError:
-        raise RuntimeError(f"Secret '{secret_id}' not found in environment variables.")
+    """
+    Fetch secret from environment variables (Variante A).
+    Accepts either the secret id (e.g. "rss-firebase-key") or
+    the corresponding env var name (e.g. "RSS_FIREBASE_KEY").
+    """
+    # mögliche Env-Varianten prüfen
+    candidates = [secret_id, secret_id.upper().replace("-", "_")]
+    for name in candidates:
+        if name in os.environ:
+            return os.environ[name]
+    # falls nichts gefunden wird, klare Fehlermeldung
+    raise RuntimeError(f"Secret '{secret_id}' not found in environment variables. Tried: {candidates}")
+
 
 
 
