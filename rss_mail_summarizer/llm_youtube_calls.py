@@ -32,8 +32,8 @@ SERVICE_ACCOUNT_LOCAL_FILE = "utils/serviceaccountkey.json"
 SECRET_ENV = "RSS_VERTEX_AI_KEY" 
 
 
-#     Holt die Service Account Credentials für Vertex AI.
-#    Zuerst aus Umgebungsvariable, sonst aus lokaler Datei.
+# Holt die Service Account Credentials für Vertex AI.
+# Zuerst aus Umgebungsvariable, sonst aus lokaler Datei.
 def get_service_account_credentials():
     # Aus cloudbuild.yaml oder Cloud Functions
     if SECRET_ENV in os.environ:

@@ -17,6 +17,7 @@ from googleapiclient.errors import HttpError
 
 # Importe eigener Funktionen
 from utils.logger import logger
+from database import add_alert_to_website_collection
 
 load_dotenv()
 
