@@ -11,15 +11,34 @@ Alle relevanten Schritte und Fehler werden im Log (auf Deutsch) dokumentiert.
 # Package Imports
 import re
 from google.oauth2 import service_account
-from google import genai
-from google.genai import types
 from google.cloud import secretmanager
 from dotenv import load_dotenv
 import os
 from urllib.parse import urlparse, parse_qs, unquote
+import sys
+
 
 # Eigene Funktionen
 from utils.logger import logger
+
+# Separater Import von genai
+try:
+    from google import genai
+    from google.genai import types
+    logger.info("google.generativeai erfolgreich importiert (lokal oder Standardpfad).")
+except ImportError:
+    logger.warning(
+        "Standard-Import von google.generativeai fehlgeschlagen. "
+        "Versuche, '/workspace' zu sys.path hinzuzufügen..."
+    )
+    sys.path.append("/workspace")
+    try:
+        from google import genai
+        from google.genai import types
+        logger.info("google.generativeai erfolgreich aus '/workspace' importiert.")
+    except ImportError as e:
+        logger.error(f"Import von google.generativeai ist fehlgeschlagen: {e}")
+        raise
 
 load_dotenv()
 
