@@ -25,41 +25,37 @@ SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
 print("ENV KEYS:", list(os.environ.keys()))
 print("RSS_FIREBASE_KEY exists?", "RSS_FIREBASE_KEY" in os.environ)
 
-def access_secret(secret_id: str, project_id: str = None) -> str:
-    """
-    Fetch secret from environment variables (Variante A).
-    Accepts either the secret id (e.g. "rss-firebase-key") or
-    the corresponding env var name (e.g. "RSS_FIREBASE_KEY").
-    """
-    # mögliche Env-Varianten prüfen
-    candidates = [secret_id, secret_id.upper().replace("-", "_")]
-    for name in candidates:
-        if name in os.environ:
-            return os.environ[name]
-    # falls nichts gefunden wird, klare Fehlermeldung
-    raise RuntimeError(f"Secret '{secret_id}' not found in environment variables. Tried: {candidates}")
+def get_firebase_credentials():
+    secret_env = "RSS_FIREBASE_KEY"
+
+    if secret_env in os.environ:
+        logger.info("Firebase-Service-Account wird aus Umgebungsvariable geladen.")
+        try:
+            service_account_info = json.loads(os.environ[secret_env])
+            return credentials.Certificate(service_account_info)
+        except Exception as e:
+            logger.error(f"Fehler beim Laden des Secrets aus der Umgebungsvariable: {e}")
+            raise
+    else:
+        logger.warning(
+            f"Umgebungsvariable {secret_env} nicht gefunden – "
+            f"verwende lokale Datei {SERVICE_ACCOUNT_KEY_PATH}."
+        )
+        try:
+            return credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+        except Exception as e:
+            logger.error(f"Konnte lokale Datei {SERVICE_ACCOUNT_KEY_PATH} nicht laden: {e}")
+            raise
 
 
-
-
-# Initialisiert Firebase mit Service Account Key (lokal oder aus Secret Manager)
 def initialize_firebase():
-    project_id = os.environ["PROJECT_ID"]
-    secret_id = "rss-firebase-key"
-
-    try:
-        # Wenn in Google:
-        service_account_key = access_secret(secret_id, project_id)
-        service_account_info = json.loads(service_account_key)
-        cred = credentials.Certificate(service_account_info)
-        logger.info("Firebase wird mit Secret aus Secret Manager initialisiert.")
-    except Exception as e:
-        # Wenn lokale Ausführung:
-        logger.warning(f"Falle zurück auf lokale Datei {SERVICE_ACCOUNT_KEY_PATH}. Grund: {e}")
-        cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-
     if not firebase_admin._apps:
+        cred = get_firebase_credentials()
         initialize_app(cred)
+        logger.info("Firebase erfolgreich initialisiert.")
+    else:
+        logger.debug("Firebase war bereits initialisiert – überspringe.")
+
 
 
 initialize_firebase()
