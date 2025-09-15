@@ -10,7 +10,6 @@ das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links
 # package imports
 import os
 import json
-import logging
 from dotenv import load_dotenv
 from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
@@ -18,7 +17,6 @@ import firebase_admin
 from urllib.parse import urlparse, parse_qs, unquote
 import re
 from datetime import datetime
-from google.cloud.firestore_v1.base_query import FieldFilter
 from utils.logger import logger
 
 load_dotenv()
