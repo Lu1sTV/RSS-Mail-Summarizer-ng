@@ -42,7 +42,8 @@ gcloud services enable cloudbuild.googleapis.com \
                        secretmanager.googleapis.com \
                        logging.googleapis.com \
                        firestore.googleapis.com \
-                       run.googleapis.com
+                       run.googleapis.com \
+                       aiplatform.googleapis.com
 ```
 Alternativ können diese auch in der Web Benutzeroberfläche freigeschaltet werden.
 
@@ -71,6 +72,7 @@ Um aus der lokalen Umgebung oder über gcloud Daten in die Firebase einspeichern
 - Unter IAM & Verwaltung --> Dienstkonten zu dem im letzten Abschnitt erstellten Dienstkonto gehen und drauf clicken.
 - Beim Reiter "Schlüssel" auf "Schlüssel hinzufügen" clicken und neuen generieren als JavaScript Object Notation
 - die JSON unter serviceAccountKey.json im Ordner rss_mail_summarizer speichern (für lokae Ausführung)
+    - außerdem muss für die llm_youtube_calls.py das auch im Unterordner utils abgespeichert werden oder der Pfad SERVICE_ACCOUNT_LOCAL_FILE in der .py Datei angepasst werden
 - Für das Deployment in der Google Cloud Weboberfläche nun zu Sicherheit --> Secret Manager navigieren und dort:
     - "secret erstellen"
     - name als "rss-firebase-key" vergeben
@@ -174,7 +176,7 @@ gcloud secrets add-iam-policy-binding credentials-credentials-json \
   --role="roles/secretmanager.secretAccessor"
 ```
 
-Zusätzlich muss dar oben für die .env erstellte API Schlüssel auch noch als Secret erstellt werden (gemini-api-key) und dem dann auch noch die entsprechenden Berechtigungen erteilt werden: 
+Zusätzlich muss der oben für die .env erstellte API Schlüssel auch noch als Secret erstellt werden (gemini-api-key) und dem dann auch noch die entsprechenden Berechtigungen erteilt werden: 
 
 ```bash
 gcloud secrets add-iam-policy-binding gemini-api-key \
@@ -186,6 +188,24 @@ gcloud secrets add-iam-policy-binding gemini-api-key \
   --role="roles/secretmanager.secretAccessor"
 ```
 
+Für die Vertex-AI muss außerdem folgende Berechtigung vergeben werden, damit Youtube Videos richtig zusammengefasst werden:
+
+```bash
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+    --role="roles/aiplatform.user"
+```
+und anschließend noch ein Secret, in dieses muss die gleiche serviceAccountKey.json wie oben bei rss_firebase_key. Nur diesmal unter dem Namen: rss-vertex-ai-key (alternativ kann in llm_youtube_calls.py die SERVICE_ACCOUNT_SECRET_ID angepasst werden). Dem Dienstkonto müssen dann noch die folgenden Berechtigungen gegeben werden:
+
+```bash
+gcloud secrets add-iam-policy-binding rss-vertex-ai-key \
+  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding rss-vertex-ai-key \
+  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
+  --role="roles/secretmanager.secretAccessor"
+```
 
 **Hinweis:**  
 Wenn weitere Alerts erstellt werden, muss die **`alert_map`** in der Datei `alerts_connector.py` entsprechend erweitert werden.  

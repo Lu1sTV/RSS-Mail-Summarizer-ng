@@ -32,6 +32,7 @@ from concurrent.futures import ThreadPoolExecutor # Import für die parallele Au
 from alerts_connector import list_google_alerts
 from database import add_datarecord, get_unprocessed_urls, get_unsent_entries, mark_as_sent
 from llm_calls import summarise_and_categorize_websites, summarise_alerts
+from llm_youtube_calls import summarise_youtube_videos, summarise_youtube_alerts
 from mastodon_connector import fetch_and_store_mastodon_links
 from send_mail import send_mail, create_markdown_report
 from utils.hn_popularity import fetch_hn_points
@@ -97,13 +98,29 @@ def main(request=None):
             # Normale Links (ohne Alerts)
             normal_links = [link["url"] for link in all_links if not link.get("alert")]
             if normal_links:
-                summaries_and_categories = summarise_and_categorize_websites(normal_links)
+                if normal_links:
+                    # Aufteilung in YouTube und Nicht-YouTube Links
+                    youtube_links = [url for url in normal_links if "youtube.com" in url or "youtu.be" in url]
+                    non_youtube_links = [url for url in normal_links if url not in youtube_links]
 
-                urls_to_fetch = list(summaries_and_categories.keys())
-                hn_points_dict = {}
-                with ThreadPoolExecutor(max_workers=10) as executor:
-                    results = executor.map(fetch_hn_points, urls_to_fetch)
-                    hn_points_dict = dict(zip(urls_to_fetch, results))
+                    summaries_and_categories = {}
+
+                    if non_youtube_links:
+                        summaries_and_categories.update(
+                            summarise_and_categorize_websites(non_youtube_links)
+                        )
+
+                    if youtube_links:
+                        summaries_and_categories.update(
+                            summarise_youtube_videos(youtube_links)
+                        )
+
+                    urls_to_fetch = list(summaries_and_categories.keys())
+                    hn_points_dict = {}
+                    with ThreadPoolExecutor(max_workers=10) as executor:
+                        results = executor.map(fetch_hn_points, urls_to_fetch)
+                        hn_points_dict = dict(zip(urls_to_fetch, results))
+
 
                 for url, result in summaries_and_categories.items():
                     # Punkte aus dem zuvor erstellten Dictionary holen
@@ -113,7 +130,7 @@ def main(request=None):
                         url=url,
                         category=result.get("category"),
                         summary=result.get("summary"),
-                        subcategory=result.get("subcategory"),
+                        subcategory=result.get("subcategory", None),
                         reading_time=result.get("reading_time"),
                         hn_points=result.get("hn_points"),
                         mail_sent=False
@@ -129,7 +146,22 @@ def main(request=None):
                     alert_links_dict.setdefault(label, []).append(link["url"])
 
             if alert_links_dict:
-                alert_summaries = summarise_alerts(alert_links_dict)
+                alert_summaries = {}
+
+                for label, urls in alert_links_dict.items():
+                    youtube_alerts = [url for url in urls if "youtube.com" in url or "youtu.be" in url]
+                    non_youtube_alerts = [url for url in urls if url not in youtube_alerts]
+
+                    if non_youtube_alerts:
+                        alert_summaries.update(
+                            summarise_alerts({label: non_youtube_alerts})
+                        )
+
+                    if youtube_alerts:
+                        alert_summaries.update(
+                            summarise_youtube_alerts(youtube_alerts)
+                        )
+
                 for url, result in alert_summaries.items():
                     add_datarecord(
                         url=url,

@@ -233,3 +233,4 @@ def save_last_toot_id(toot_id: int):
     }
     db.collection("mastodon_toots").add(data)
     logger.info(f"Neue Toot-ID gespeichert: {toot_id}")
+

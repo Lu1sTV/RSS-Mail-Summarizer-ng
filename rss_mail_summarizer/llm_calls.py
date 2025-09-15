@@ -1,6 +1,15 @@
+"""
+Diese Funktion fasst eine Liste von URLs zusammen und kategorisiert sie.
+- Erstellt einen Prompt für das Gemini LLM.
+- Extrahiert für jede URL: Zusammenfassung, Kategorie, Themen und geschätzte Lesezeit.
+- Für GitHub-Repositories wird automatisch die Kategorie "GitHub" gesetzt.
+- Subkategorien werden basierend auf häufig genannten Themen zugewiesen.
+- Gibt ein Dictionary zurück: URL -> {summary, category, topics, reading_time, subcategory}.
+"""
+
+
 # package imports
 import re
-import logging
 from collections import defaultdict
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.prompts import ChatPromptTemplate
@@ -8,6 +17,8 @@ from dotenv import load_dotenv
 import os
 from langchain_core.rate_limiters import InMemoryRateLimiter
 from google.cloud import secretmanager
+
+# Imports eigener Funktionen
 from utils.logger import logger
 
 # Umgebungsvariablen laden
