@@ -24,12 +24,17 @@ SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
 
 
 # Google Secret einholen wenn in Google ausgeführt
-def access_secret(secret_id: str, project_id: str):
-    """Fetch secret from Secret Manager."""
-    client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
-    return response.payload.data.decode("UTF-8")
+import os
+
+def access_secret(secret_id: str, project_id: str = None) -> str:
+    """Fetch secret from environment variables (Variante A)."""
+    # project_id bleibt als Parameter erhalten, damit der Funktionsaufruf kompatibel bleibt,
+    # wird hier aber nicht mehr benötigt.
+    try:
+        return os.environ[secret_id]
+    except KeyError:
+        raise RuntimeError(f"Secret '{secret_id}' not found in environment variables.")
+
 
 
 # Initialisiert Firebase mit Service Account Key (lokal oder aus Secret Manager)
