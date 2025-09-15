@@ -11,7 +11,6 @@ das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links
 import os
 import json
 from dotenv import load_dotenv
-from google.cloud import secretmanager
 from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
 from urllib.parse import urlparse, parse_qs, unquote
@@ -21,9 +20,6 @@ from utils.logger import logger
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
-
-print("ENV KEYS:", list(os.environ.keys()))
-print("RSS_FIREBASE_KEY exists?", "RSS_FIREBASE_KEY" in os.environ)
 
 def get_firebase_credentials():
     secret_env = "RSS_FIREBASE_KEY"

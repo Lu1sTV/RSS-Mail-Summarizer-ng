@@ -29,45 +29,47 @@ load_dotenv()
 PROJECT_ID = os.environ.get("PROJECT_ID")
 
 # Secret-ID für das Service Account JSON
-SERVICE_ACCOUNT_SECRET_ID = "rss-vertex-ai-key"
 SERVICE_ACCOUNT_LOCAL_FILE = "utils/serviceaccountkey.json"
+SECRET_ENV = "RSS_VERTEX_AI_KEY" 
 
 
-# Funktion zum Zugriff auf Secrets
-def access_secret(secret_id: str, project_id: str) -> str:
-    logger.debug(f"Greife auf Secret '{secret_id}' im Projekt '{project_id}' zu...")
-    client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
-    logger.info(f"Secret '{secret_id}' erfolgreich aus Secret Manager abgerufen.")
-    return response.payload.data.decode("UTF-8")
-
-
-# Service-Account-Credentials laden (Cloud oder lokal)
+#     Holt die Service Account Credentials für Vertex AI.
+#    Zuerst aus Umgebungsvariable, sonst aus lokaler Datei.
 def get_service_account_credentials():
-    if PROJECT_ID:
+    # Aus cloudbuild.yaml oder Cloud Functions
+    if SECRET_ENV in os.environ:
+        logger.info("Vertex AI Service Account aus Umgebungsvariable laden.")
         try:
-            logger.info("Versuche Service Account JSON aus Secret Manager zu laden...")
-            sa_json = access_secret(SERVICE_ACCOUNT_SECRET_ID, PROJECT_ID)
-
-            with open("/tmp/serviceaccount.json", "w") as f:
-                f.write(sa_json)
-
+            sa_info = os.environ[SECRET_ENV]
+            # falls ENV den JSON-String enthält, schreiben wir temporär auf /tmp
+            import json
+            sa_json = json.loads(sa_info)
+            tmp_path = "/tmp/serviceaccount.json"
+            with open(tmp_path, "w") as f:
+                json.dump(sa_json, f)
             creds = service_account.Credentials.from_service_account_file(
-                "/tmp/serviceaccount.json",
+                tmp_path,
                 scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )
-            logger.info("Service Account erfolgreich aus Secret Manager geladen.")
+            logger.info("Vertex AI Service Account erfolgreich aus ENV geladen.")
             return creds
         except Exception as e:
-            logger.warning(f"Konnte Secret nicht abrufen (Grund: {e}). Fallback auf lokale Datei...")
+            logger.error(f"Fehler beim Laden des Service Accounts aus ENV: {e}")
+            raise
 
-    # Fallback auf lokale Datei
-    logger.info("Verwende lokales Service Account File.")
-    return service_account.Credentials.from_service_account_file(
-        SERVICE_ACCOUNT_LOCAL_FILE,
-        scopes=["https://www.googleapis.com/auth/cloud-platform"]
-    )
+    # lokale Datei
+    if os.path.exists(SERVICE_ACCOUNT_LOCAL_FILE):
+        logger.warning(f"ENV Variable {SECRET_ENV} nicht gefunden – verwende lokale Datei {SERVICE_ACCOUNT_LOCAL_FILE}.")
+        return service_account.Credentials.from_service_account_file(
+            SERVICE_ACCOUNT_LOCAL_FILE,
+            scopes=["https://www.googleapis.com/auth/cloud-platform"]
+        )
+
+    # Fehler, weil kein Zugriff möglich
+    logger.error(f"Service Account weder in ENV ({SECRET_ENV}) noch lokal ({SERVICE_ACCOUNT_LOCAL_FILE}) gefunden.")
+    raise FileNotFoundError("Vertex AI Service Account nicht verfügbar.")
+
+
 
 
 # Client initialisieren

@@ -27,41 +27,31 @@ load_dotenv()
 LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
 
 
-# Google Secret einholen wenn in Google ausgeführt
-def access_secret(secret_id: str, project_id: str):
-    logger.debug(f"Greife auf Secret '{secret_id}' im Projekt '{project_id}' zu...")
-    client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_id}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
-    logger.info(f"Secret '{secret_id}' erfolgreich aus Secret Manager abgerufen.")
-    return response.payload.data.decode("UTF-8")
-
-
-# Gemini API Key abrufen (entweder aus Secret Manager oder lokale .env)
+# Unterscheidet zwischen lokaler ausführung und nutzung der environment Variable 
+# oder Nutzung der vom Cloud Build mitgegebenen Werte
 def get_gemini_api_key():
-    project_id = os.environ.get("PROJECT_ID")
-    secret_id = "gemini-api-key"
+    secret_env = LOCAL_GEMINI_KEY_ENV
 
-    if not project_id:
-        logger.warning("PROJECT_ID nicht in den Umgebungsvariablen gefunden.")
+    # Cloud Build
+    if secret_env in os.environ:
+        logger.info("Gemini API-Key wird aus Umgebungsvariable geladen.")
+        try:
+            return os.environ[secret_env]
+        except Exception as e:
+            logger.error(f"Fehler beim Laden des Gemini API-Keys aus Umgebungsvariable: {e}")
+            raise
 
-    try:
-        api_key = access_secret(secret_id, project_id)
-        logger.info("Verwende Gemini API-Key aus Secret Manager")
-        return api_key
-    except Exception as e:
-        logger.warning(
-            f"Konnte API-Key nicht aus Secret Manager abrufen (Grund: {e}). "
-            f"Falle auf lokale .env zurück..."
-        )
-        api_key = os.getenv(LOCAL_GEMINI_KEY_ENV)
-        if not api_key:
-            logger.error("Gemini API-Key weder im Secret Manager noch in .env gefunden.")
-            raise RuntimeError(
-                f"Gemini API-Key weder im Secret Manager noch in .env gefunden. Grund: {e}"
-            )
-        logger.info("Verwende Gemini API-Key aus lokaler .env")
-        return api_key
+    # Lokale .env
+    logger.warning(
+        f"Umgebungsvariable {secret_env} nicht gefunden – "
+        f"verwende Wert aus lokaler .env."
+    )
+    api_key = os.getenv(secret_env)
+    if not api_key:
+        logger.error(f"Gemini API-Key weder in Umgebungsvariable noch in .env gefunden.")
+        raise RuntimeError("Gemini API-Key nicht verfügbar.")
+    return api_key
+
 
 
 rate_limiter = InMemoryRateLimiter(
@@ -70,7 +60,7 @@ rate_limiter = InMemoryRateLimiter(
     max_bucket_size=1,
 )
 
-# Holt GEMINI_API_KEY entweder aus Secret Manager oder .env
+# Holt GEMINI_API_KEY entweder aus cloudbuild.yaml oder .env
 GEMINI_API_KEY = get_gemini_api_key()
 
 # Gemini initialisieren

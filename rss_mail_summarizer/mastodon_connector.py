@@ -9,9 +9,7 @@ in einer Datei gespeichert und beim nächsten Lauf wiederverwendet.
 # package Imports
 from mastodon import Mastodon
 from bs4 import BeautifulSoup
-import os
 import time
-import logging
 
 # Imports eigener Funktionen
 from database import add_url_to_website_collection, get_last_toot_id, save_last_toot_id

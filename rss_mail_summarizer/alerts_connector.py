@@ -6,18 +6,19 @@ Anschließend werden die übrigen Links in der Firestore-Datenbank gespeichert.
 
 # package imports
 import os
-import logging
 import base64
+from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
-from google.cloud import secretmanager
 
 # Imports eigener Funktionen
 from database import add_alert_to_website_collection
 from utils.logger import logger
+
+load_dotenv()
 
 # Google API Scopes und Dateipfade für Credentials
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
@@ -26,8 +27,30 @@ CREDENTIALS_DIR = "credentials"
 CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
 TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
 
-SECRET_CREDENTIALS = "credentials-credentials-json"
-SECRET_TOKEN = "credentials-token-json"
+# Map von Alert-Namen zu Gmail-Labeln
+alert_map = {
+    "Carlo Masala": ("alerts-carlo-masala", "alerts-carlo-masala-processed"),
+}
+
+
+import os
+import json
+from dotenv import load_dotenv
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from utils.logger import logger
+
+load_dotenv()
+
+# Google API Scopes
+SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+
+# Lokale Pfade
+CREDENTIALS_DIR = "credentials"
+CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
+TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
 
 # Map von Alert-Namen zu Gmail-Labeln
 alert_map = {
@@ -35,36 +58,46 @@ alert_map = {
 }
 
 
-# Holt ein Secret aus dem Google Secret Manager
-def get_secret(secret_name, project_id):
-    logger.debug("Hole Secret '%s' aus Projekt '%s'", secret_name, project_id)
-    client = secretmanager.SecretManagerServiceClient()
-    name = f"projects/{project_id}/secrets/{secret_name}/versions/latest"
-    response = client.access_secret_version(request={"name": name})
-    return response.payload.data.decode("utf-8")
+def get_local_secret(env_var_name: str, local_path: str):
+    """
+    Holt Secret aus Umgebungsvariable, sonst aus lokaler Datei.
+    """
+    if env_var_name in os.environ:
+        logger.info(f"{env_var_name} wird aus Umgebungsvariable geladen.")
+        try:
+            return json.loads(os.environ[env_var_name])
+        except Exception as e:
+            logger.error(f"Fehler beim Laden von {env_var_name} aus Umgebungsvariable: {e}")
+            raise
+    elif os.path.exists(local_path):
+        logger.info(f"{env_var_name} wird aus lokaler Datei {local_path} geladen.")
+        with open(local_path, "r") as f:
+            return json.load(f)
+    else:
+        logger.error(f"{env_var_name} nicht gefunden – weder Umgebungsvariable noch lokale Datei {local_path}.")
+        raise FileNotFoundError(f"{env_var_name} nicht verfügbar.")
 
 
-# Stellt sicher, dass die Credentials-Dateien vorhanden sind, sonst aus Secret Manager holen
 def ensure_credentials():
     os.makedirs(CREDENTIALS_DIR, exist_ok=True)
-    project_id = os.environ["PROJECT_ID"]
 
-    if not os.path.exists(CREDENTIALS_FILE):
-        logger.warning("credentials.json nicht gefunden – hole aus Secret Manager")
-        creds_data = get_secret(SECRET_CREDENTIALS, project_id)
+    # credentials.json laden oder aus ENV schreiben
+    if not os.path.exists(CREDENTIALS_FILE) and "CREDENTIALS_CREDENTIALS_JSON" in os.environ:
+        logger.info("credentials.json nicht gefunden – schreibe aus ENV.")
+        creds_json = os.environ["CREDENTIALS_CREDENTIALS_JSON"]
         with open(CREDENTIALS_FILE, "w") as f:
-            f.write(creds_data)
-        logger.info("credentials.json erfolgreich angelegt")
+            f.write(creds_json)
+        logger.info("credentials.json erfolgreich erstellt aus ENV.")
 
-    if not os.path.exists(TOKEN_FILE):
-        logger.warning("token.json nicht gefunden – hole aus Secret Manager")
-        token_data = get_secret(SECRET_TOKEN, project_id)
+    # token.json ggf. aus ENV schreiben (nur wenn du Token vorher gespeichert hast)
+    if not os.path.exists(TOKEN_FILE) and "CREDENTIALS_TOKEN_JSON" in os.environ:
+        logger.info("token.json nicht gefunden – schreibe aus ENV.")
+        token_json = os.environ["CREDENTIALS_TOKEN_JSON"]
         with open(TOKEN_FILE, "w") as f:
-            f.write(token_data)
-        logger.info("token.json erfolgreich angelegt")
+            f.write(token_json)
+        logger.info("token.json erfolgreich erstellt aus ENV.")
 
 
-# Erstellt und gibt einen Gmail API Service zurück
 def get_gmail_service():
     ensure_credentials()
 
@@ -74,10 +107,8 @@ def get_gmail_service():
         creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
     else:
         if not os.path.exists(CREDENTIALS_FILE):
-            logger.error("%s fehlt. Bitte Datei bereitstellen oder in Cloud Secrets ablegen.", CREDENTIALS_FILE)
-            raise FileNotFoundError(
-                f"{CREDENTIALS_FILE} fehlt. Bitte erstellen oder in Cloud Secrets ablegen."
-            )
+            logger.error(f"{CREDENTIALS_FILE} fehlt. Bitte bereitstellen oder in ENV ablegen.")
+            raise FileNotFoundError(f"{CREDENTIALS_FILE} fehlt.")
         logger.info("Starte OAuth-Flow für Gmail API")
         flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS_FILE, SCOPES)
         creds = flow.run_local_server(port=0)
