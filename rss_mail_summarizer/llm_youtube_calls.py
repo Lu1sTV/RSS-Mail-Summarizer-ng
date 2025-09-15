@@ -11,7 +11,6 @@ Alle relevanten Schritte und Fehler werden im Log (auf Deutsch) dokumentiert.
 # Package Imports
 import re
 from google.oauth2 import service_account
-from google.cloud import secretmanager
 from dotenv import load_dotenv
 import os
 from urllib.parse import urlparse, parse_qs, unquote

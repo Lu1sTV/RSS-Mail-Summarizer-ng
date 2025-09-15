@@ -20,7 +20,13 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
+      - --set-secrets=CREDENTIALS_CREDENTIALS_JSON=credentials-credentials-json:latest
+      - --set-secrets=CREDENTIALS_TOKEN_JSON=credentials-token-json:latest
+      - --set-secrets=GEMINI_API_KEY=gemini-api-key:latest
+      - --set-secrets=RECIPIENT_EMAIL=recipient-email:latest
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
+      - --set-secrets=RSS_VERTEX_AI_KEY=rss-vertex-ai-key:latest
+      - --set-secrets=SENDER_EMAIL=sender-email:latest
       - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
 
   # Deploy rss_mail_summarizer_main function (braucht viele Secrets)
@@ -66,7 +72,11 @@ steps:
       - --timeout=120s
       - --set-secrets=CREDENTIALS_CREDENTIALS_JSON=credentials-credentials-json:latest
       - --set-secrets=CREDENTIALS_TOKEN_JSON=credentials-token-json:latest
+      - --set-secrets=GEMINI_API_KEY=gemini-api-key:latest
+      - --set-secrets=RECIPIENT_EMAIL=recipient-email:latest
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
+      - --set-secrets=RSS_VERTEX_AI_KEY=rss-vertex-ai-key:latest
+      - --set-secrets=SENDER_EMAIL=sender-email:latest
       - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
 
 options:

@@ -6,6 +6,7 @@ Anschließend werden die übrigen Links in der Firestore-Datenbank gespeichert.
 
 # package imports
 import os
+import json
 import base64
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
@@ -14,32 +15,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from bs4 import BeautifulSoup
 from googleapiclient.errors import HttpError
 
-# Imports eigener Funktionen
-from database import add_alert_to_website_collection
-from utils.logger import logger
-
-load_dotenv()
-
-# Google API Scopes und Dateipfade für Credentials
-SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
-
-CREDENTIALS_DIR = "credentials"
-CREDENTIALS_FILE = os.path.join(CREDENTIALS_DIR, "credentials.json")
-TOKEN_FILE = os.path.join(CREDENTIALS_DIR, "token.json")
-
-# Map von Alert-Namen zu Gmail-Labeln
-alert_map = {
-    "Carlo Masala": ("alerts-carlo-masala", "alerts-carlo-masala-processed"),
-}
-
-
-import os
-import json
-from dotenv import load_dotenv
-from google.auth.transport.requests import Request
-from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
-from googleapiclient.discovery import build
+# Importe eigener Funktionen
 from utils.logger import logger
 
 load_dotenv()
@@ -58,10 +34,9 @@ alert_map = {
 }
 
 
+# Holt Secret aus Umgebungsvariable (von Cloudbuild.yaml gesetzt), 
+# sonst aus lokaler Datei.
 def get_local_secret(env_var_name: str, local_path: str):
-    """
-    Holt Secret aus Umgebungsvariable, sonst aus lokaler Datei.
-    """
     if env_var_name in os.environ:
         logger.info(f"{env_var_name} wird aus Umgebungsvariable geladen.")
         try:
