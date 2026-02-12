@@ -15,7 +15,6 @@ steps:
       - --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
-      - --service-account=serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
       - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
 

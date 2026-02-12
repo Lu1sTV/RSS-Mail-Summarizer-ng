@@ -18,45 +18,27 @@ import re
 from datetime import datetime
 from utils.logger import logger
 
-load_dotenv()
-SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
-
-def get_firebase_credentials():
-    secret_env = "RSS_FIREBASE_KEY"
-
-    if secret_env in os.environ:
-        logger.info("Firebase-Service-Account wird aus Umgebungsvariable geladen.")
-        try:
-            service_account_info = json.loads(os.environ[secret_env])
-            return credentials.Certificate(service_account_info)
-        except Exception as e:
-            logger.error(f"Fehler beim Laden des Secrets aus der Umgebungsvariable: {e}")
-            raise
-    else:
-        logger.warning(
-            f"Umgebungsvariable {secret_env} nicht gefunden – "
-            f"verwende lokale Datei {SERVICE_ACCOUNT_KEY_PATH}."
-        )
-        try:
-            return credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-        except Exception as e:
-            logger.error(f"Konnte lokale Datei {SERVICE_ACCOUNT_KEY_PATH} nicht laden: {e}")
-            raise
-
-
 def initialize_firebase():
     if not firebase_admin._apps:
-        cred = get_firebase_credentials()
-        initialize_app(cred)
-        logger.info("Firebase erfolgreich initialisiert.")
+        # Prüfen, ob wir in der Google Cloud laufen (K_SERVICE wird von Cloud Run gesetzt)
+        if os.getenv('K_SERVICE'):
+            logger.info("Cloud-Umgebung erkannt: Nutze Application Default Credentials.")
+            initialize_app()
+        else:
+            # Lokal suchen wir weiterhin nach der Datei für Tests
+            SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
+            if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
+                logger.info(f"Lokale Umgebung: Nutze {SERVICE_ACCOUNT_KEY_PATH}")
+                cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+                initialize_app(cred)
+            else:
+                logger.error("Keine Credentials gefunden (weder Cloud noch lokale Datei)!")
+                raise FileNotFoundError("Service Account Key fehlt für lokale Ausführung.")
     else:
-        logger.debug("Firebase war bereits initialisiert – überspringe.")
+        logger.debug("Firebase war bereits initialisiert.")
 
-
-
+# Initialisierung starten
 initialize_firebase()
-
-# Firestore-Client wird erstellt
 db = firestore.client()
 
 
