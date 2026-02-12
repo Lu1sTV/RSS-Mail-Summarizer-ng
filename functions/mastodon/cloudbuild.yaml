@@ -1,0 +1,23 @@
+steps:
+  # Deploy mastodon_connector function
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - mastodon_connector
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=.
+      - --entry-point=mastodon_connector_activate
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --service-account=serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com
+      - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
+      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
+
+options:
+  logging: CLOUD_LOGGING_ONLY
