@@ -14,8 +14,6 @@ from mastodon import Mastodon
 from bs4 import BeautifulSoup
 
 # Importiere shared modules (lokal + Cloud)
-shared_root = Path(__file__).resolve().parents[2] / "rss_mail_summarizer"
-sys.path.insert(0, str(shared_root))
 from database import add_url_to_website_collection, get_last_toot_id, save_last_toot_id
 from utils.logger import logger
 
