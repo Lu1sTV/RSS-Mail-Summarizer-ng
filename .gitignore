@@ -5,3 +5,11 @@ rss_mail_summarizer/.env
 rss_mail_summarizer/serviceAccountKey.json
 rss_mail_summarizer/credentials
 rss_mail_summarizer/utils/serviceAccountKey.json
+
+# Google Auth & Keys
+**/keys/*.json
+serviceAccountKey.json
+token.json
+credentials.json
+__pycache__/
+.venv/
