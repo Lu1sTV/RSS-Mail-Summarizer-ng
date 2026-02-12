@@ -10,8 +10,6 @@ from pathlib import Path
 import functions_framework
 
 # Import shared modules (lokal + Cloud)
-shared_root = Path(__file__).resolve().parents[2] / "rss_mail_summarizer"
-sys.path.insert(0, str(shared_root))
 from utils.logger import logger
 from mastodon_service import MastodonService
 
