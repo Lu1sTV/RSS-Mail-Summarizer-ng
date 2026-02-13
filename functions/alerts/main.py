@@ -57,7 +57,6 @@ def process_single_alert(service, config):
         logger.warning(f"Ziel-Label '{label_out}' nicht gefunden. Bitte in Gmail anlegen!")
         return 0
 
-    # Mails laden (nur die ID und ThreadID, um Traffic zu sparen)
     results = service.users().messages().list(userId='me', labelIds=[id_in]).execute()
     messages = results.get('messages', [])
 
@@ -86,7 +85,6 @@ def process_single_alert(service, config):
                 logger.info(f"Mail {msg_id} übersprungen: Kein HTML-Inhalt.")
                 continue
 
-            # HTML decodieren und parsen
             html = base64.urlsafe_b64decode(body_data).decode()
             soup = BeautifulSoup(html, 'html.parser')
 
