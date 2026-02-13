@@ -18,7 +18,7 @@ SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 def get_gmail_service():
     base_dir = os.path.dirname(os.path.abspath(__file__))
     token_path = os.path.join(base_dir, 'keys', 'token.json')
-    
+
     if os.path.exists(token_path):
         creds = Credentials.from_authorized_user_file(token_path, SCOPES)
         return build('gmail', 'v1', credentials=creds)
@@ -44,7 +44,7 @@ def process_single_alert(service, config):
     label_in = config["label"]
     label_out = config["processed_label"]
     category = config["name"]
-    
+
     logger.info(f"--- Prüfe '{category}' ({label_in}) ---")
 
     id_in = get_label_id(service, label_in)
@@ -60,7 +60,7 @@ def process_single_alert(service, config):
     # Mails laden (nur die ID und ThreadID, um Traffic zu sparen)
     results = service.users().messages().list(userId='me', labelIds=[id_in]).execute()
     messages = results.get('messages', [])
-    
+
     if not messages:
         logger.info(f"Keine neuen Nachrichten.")
         return 0
@@ -71,10 +71,10 @@ def process_single_alert(service, config):
         try:
             msg_id = msg_summary['id']
             msg = service.users().messages().get(userId='me', id=msg_id).execute()
-            
+
             payload = msg['payload']
             body_data = ""
-            
+
             if 'parts' in payload:
                 for part in payload['parts']:
                     if part['mimeType'] == 'text/html':
@@ -105,11 +105,11 @@ def process_single_alert(service, config):
                             final_url = unquote(raw_url)
                     except:
                         pass
-                
+
                 if not is_blacklisted(final_url):
                     if save_alert_url(final_url, category):
                         links_saved += 1
-                
+
             if links_saved > 0:
                 logger.info(f"Mail {msg_id}: {links_saved} Links gespeichert.")
             else:
@@ -124,7 +124,7 @@ def process_single_alert(service, config):
                 }
             ).execute()
             count_processed += 1
-            
+
         except Exception as e:
             logger.error(f"Fehler bei Mail {msg_summary['id']}: {e}")
 
@@ -136,10 +136,10 @@ def alerts_mvp_endpoint(request):
     try:
         service = get_gmail_service()
         total_mails = 0
-        
+
         for config in ALERT_CONFIG:
             total_mails += process_single_alert(service, config)
-            
+
         return f"Erfolg: {total_mails} Mails verarbeitet und verschoben.", 200
 
     except Exception as e:
