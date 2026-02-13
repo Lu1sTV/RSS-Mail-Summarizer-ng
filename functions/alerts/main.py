@@ -7,19 +7,15 @@ from googleapiclient.discovery import build
 from bs4 import BeautifulSoup
 from urllib.parse import unquote
 
-# Eigene Module (müssen im selben Ordner liegen)
 from alerts_database import save_alert_url
 from alerts_config import ALERT_CONFIG, LINK_BLACKLIST
 
-# Logging Setup
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Scope: E-Mails lesen & bearbeiten (Labels ändern)
 SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
 
 def get_gmail_service():
-    """Erstellt den Gmail-Service mit dem Token aus dem keys/-Ordner."""
     base_dir = os.path.dirname(os.path.abspath(__file__))
     token_path = os.path.join(base_dir, 'keys', 'token.json')
     
@@ -30,7 +26,6 @@ def get_gmail_service():
         raise Exception(f"FEHLER: {token_path} fehlt! Bitte 'python keys/generate_token.py' ausführen.")
 
 def get_label_id(service, label_name):
-    """Hilfsfunktion: Findet die ID zu einem Label-Namen."""
     results = service.users().labels().list(userId='me').execute()
     labels = results.get('labels', [])
     for l in labels:
@@ -39,7 +34,6 @@ def get_label_id(service, label_name):
     return None
 
 def is_blacklisted(url):
-    """Prüft, ob eine URL auf der Blacklist steht (case-insensitive)."""
     url_lower = url.lower()
     for bad_word in LINK_BLACKLIST:
         if bad_word.lower() in url_lower:
@@ -47,7 +41,6 @@ def is_blacklisted(url):
     return False
 
 def process_single_alert(service, config):
-    """Verarbeitet alle Mails für EINEN Alert-Typ (Kategorie)."""
     label_in = config["label"]
     label_out = config["processed_label"]
     category = config["name"]
@@ -77,13 +70,11 @@ def process_single_alert(service, config):
     for msg_summary in messages:
         try:
             msg_id = msg_summary['id']
-            # Jetzt den vollen Inhalt laden
             msg = service.users().messages().get(userId='me', id=msg_id).execute()
             
             payload = msg['payload']
             body_data = ""
             
-            # Body finden (kann direkt im Payload sein oder in Parts)
             if 'parts' in payload:
                 for part in payload['parts']:
                     if part['mimeType'] == 'text/html':
@@ -104,7 +95,6 @@ def process_single_alert(service, config):
                 href = a['href']
                 final_url = href
 
-                # 1. Google-Redirects sauber machen (falls vorhanden)
                 if "google.com/url" in href:
                     try:
                         if "q=" in href:
@@ -114,10 +104,8 @@ def process_single_alert(service, config):
                             raw_url = href.split("url=")[1].split("&")[0]
                             final_url = unquote(raw_url)
                     except:
-                        # Falls das Parsen scheitert, nehmen wir den Link so wie er ist
                         pass
                 
-                # 2. Speichern (wenn nicht auf Blacklist)
                 if not is_blacklisted(final_url):
                     if save_alert_url(final_url, category):
                         links_saved += 1
@@ -127,7 +115,6 @@ def process_single_alert(service, config):
             else:
                 logger.info(f"Mail {msg_id}: Keine relevanten Links gefunden.")
 
-            # 3. Mail verschieben (Label ändern)
             service.users().messages().modify(
                 userId='me',
                 id=msg_id,
@@ -150,7 +137,6 @@ def alerts_mvp_endpoint(request):
         service = get_gmail_service()
         total_mails = 0
         
-        # Iteriere über alle konfigurierten Alerts
         for config in ALERT_CONFIG:
             total_mails += process_single_alert(service, config)
             
