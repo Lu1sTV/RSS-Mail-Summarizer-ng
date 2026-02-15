@@ -7,15 +7,12 @@ Um doppelte Verarbeitung zu vermeiden, wird die zuletzt verarbeitete Toot-ID
 in Firestore gespeichert und beim nächsten Lauf wiederverwendet.
 """
 
-import sys
 import time
-from pathlib import Path
 from mastodon import Mastodon
 from bs4 import BeautifulSoup
 
 # Importiere shared modules (lokal + Cloud)
-from database import add_url_to_website_collection, get_last_toot_id, save_last_toot_id
-from utils.logger import logger
+from database import FirestoreRepository, logger
 
 
 class MastodonService:
@@ -27,6 +24,7 @@ class MastodonService:
     def __init__(self):
         """Initialisiert den Mastodon-Service"""
         self.mastodon = Mastodon(api_base_url=self.MASTODON_INSTANCE_URL)
+        self.repo = FirestoreRepository()
     
     def fetch_and_store_links(self):
         """
@@ -47,7 +45,7 @@ class MastodonService:
             new_links = []
 
             # Prüfen, ob es bereits eine gespeicherte letzte Toot-ID gibt
-            since_id = get_last_toot_id()
+            since_id = self.repo.get_last_toot_id()
             if since_id:
                 logger.info(f"Lade neue Toots seit ID {since_id} ...")
             else:
@@ -76,7 +74,7 @@ class MastodonService:
                 return
 
             latest_toot_id = max(int(toot["id"]) for toot in all_toots)
-            save_last_toot_id(latest_toot_id)
+            self.repo.save_last_toot_id(latest_toot_id)
             logger.info(f"Gespeicherte letzte Toot-ID: {latest_toot_id}")
 
             # Neue Toots verarbeiten und Links extrahieren
@@ -112,7 +110,7 @@ class MastodonService:
                     and "hashtag" not in a_tag.get("rel", [])
                     and "mention" not in a_tag.get("class", [])
                 ):
-                    add_url_to_website_collection(href)
+                    self.repo.add_url_to_website_collection(href)
                     new_links.append(href)
         
         return new_links

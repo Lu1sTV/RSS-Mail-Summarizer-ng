@@ -17,11 +17,11 @@ def main():
 
         # Starte den OAuth-Flow und speichere die Zugangsdaten
         flow = InstalledAppFlow.from_client_secrets_file(
-            "../credentials/credentials.json", SCOPES
+            "credentials/credentials.json", SCOPES
         )
         creds = flow.run_local_server(port=0)
 
-        with open("../credentials/token.json", "w") as token:
+        with open("credentials/token.json", "w") as token:
             token.write(creds.to_json())
 
         logger.info("Token wurde erfolgreich gespeichert.")

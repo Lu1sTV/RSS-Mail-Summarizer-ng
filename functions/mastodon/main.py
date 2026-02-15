@@ -5,12 +5,10 @@ Entry-Point für Google Cloud Functions.
 Ruft über den Mastodon-Connector Links ab und speichert diese in der Datenbank.
 """
 
-import sys
-from pathlib import Path
 import functions_framework
 
 # Import shared modules (lokal + Cloud)
-from utils.logger import logger
+from database import logger
 from mastodon_service import MastodonService
 
 
