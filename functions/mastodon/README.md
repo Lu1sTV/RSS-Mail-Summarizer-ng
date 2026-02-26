@@ -1,113 +1,64 @@
-# Mastodon Connector Function
+# Mastodon Connector – Google Cloud Function
 
-Refaktorierte Cloud Function für das Abrufen von Mastodon-Links.
+Modularer Microservice zur Synchronisation eines Mastodon-Accounts.  
+Ruft neue Beiträge ab, extrahiert enthaltene Links inkl. Metadaten und persistiert sie strukturiert in Firestore zur weiteren Verarbeitung (z. B. KI-Zusammenfassung, RSS-Pipeline).
 
-## Struktur
 
-```
+## Projektstruktur
+
+```text
 functions/mastodon/
-├── main.py                      # Cloud Function Entry-Point
-├── mastodon_service.py          # Business Logic (MastodonService Klasse)
-├── test_mastodon_service.py     # Unit Tests mit Mocks
-├── requirements.txt             # Dependencies
-├── cloudbuild.yaml              # Deployment Config
-└── README.md
+├── main.py              # HTTP Entry-Point (Cloud Function)
+├── mastodon_service.py  # Geschäftslogik (MastodonService)
+├── database.py          # Firestore-Zugriffsschicht
+├── requirements.txt     # Python-Abhängigkeiten
+├── cloudbuild.yaml      # Build- & Deployment-Konfiguration
+└── README.md            # Dokumentation
 ```
+## Architektur & Kernfunktionen
+Der Service wurde im Rahmen eines Refactorings aus dem ursprünglichen Monolithen extrahiert, um die Unabhängigkeit und Kaltstartzeiten zu optimieren.
 
-## Setup
+### 1. MastodonService (mastodon_service.py)
+Abruf: Identifiziert den Account über die Instanz-URL und den Benutzernamen.
 
-### Lokal mit Mock-Tests
+Pagination: Speichert und nutzt die last_toot_id, um nur neue Beiträge seit dem letzten Aufruf zu laden.
+
+Metadata Extraction: Extrahiert nicht nur URLs, sondern auch den Text des Toots (toot_text), den Link zum Original-Toot (toot_url) und das Erstellungsdatum (toot_date). Dies liefert wertvollen Kontext für die spätere KI-Zusammenfassung.
+
+### 2. FirestoreRepository (database.py)
+Bietet eine saubere Schnittstelle zur Firebase-Datenbank.
+
+Verwaltet zwei Collections:
+
+website: Speichert die extrahierten Links und deren Metadaten.
+
+mastodon_toots: Speichert den Status der zuletzt verarbeiteten ID.
+
+### 3. Entry-Point (main.py)
+Verwendet das functions-framework, um die Logik als HTTP-Trigger bereitzustellen.
+
+Nimmt Anfragen entgegen und stößt den Synchronisationsprozess an.
+
+## Setup & Deployment
+Lokale Vorbereitung
+Installiere die notwendigen Bibliotheken für die Entwicklung:
 
 ```bash
-# Dependencies installieren
 pip install -r requirements.txt
-
-# Tests ausführen
-pytest test_mastodon_service.py -v
-
-# Speziellen Test ausführen
-pytest test_mastodon_service.py::TestMastodonService::test_fetch_and_store_links_success_with_new_toots -v
 ```
-
-### Lokal mit echtem Firebase (später)
+Deployment zur Google Cloud
+Das Deployment wird über Google Cloud Build gesteuert. Stelle sicher, dass du dich im Verzeichnis functions/mastodon/ befindest:
 
 ```bash
-# .env Datei mit RSS_FIREBASE_KEY erstellen
-echo "RSS_FIREBASE_KEY=<your-firebase-key>" > .env
-
-# Cloud Function lokal emulieren
-functions-framework --target=mastodon_connector_activate --debug --port=8080
-
-# In anderem Terminal testen
-curl http://localhost:8080/
+gcloud builds submit . --config cloudbuild.yaml --substitutions=_PROJECT_ID=[DEINE_PROJECT_ID]
 ```
+## Konfiguration (Secrets & Umgebungsvariablen)
+Der Service benötigt Zugriff auf folgende Ressourcen in GCP:
 
-### Deploy zu Google Cloud
+Secrets:
 
-```bash
-# Vom root des Projekts
-cd functions/mastodon
-gcloud builds submit . --config cloudbuild.yaml --substitutions=_PROJECT_ID=<your-project-id>
-```
+rss-firebase-key: Enthält die Service-Account-Informationen für Firestore.
 
-## Tests
+Umgebungsvariablen:
 
-### Mock-Tests (aktuell)
-
-Die `test_mastodon_service.py` testet die komplette Business Logic mit Mock-Objekten:
-
-- ✅ Erfolgreiches Abrufen neuer Toots
-- ✅ Pagination (mehrere Seiten)
-- ✅ Filterung von Hashtags/Mentions
-- ✅ Link-Extraktion und DB-Speicherung
-- ✅ Error Handling
-
-**Keine echten API-Aufrufe oder Firebase-Zugriffe** – schnell & zuverlässig.
-
-```bash
-pytest test_mastodon_service.py -v
-```
-
-### Integration Tests (TODO)
-
-Nach lokal Setup mit echtem Firebase:
-```bash
-set RSS_FIREBASE_KEY=<your-firebase-key>
-pytest test_mastodon_service.py -v --integration
-```
-
-## Architecture
-
-### MastodonService Klasse
-
-```python
-class MastodonService:
-    def fetch_and_store_links(self):
-        """Holt Toots und speichert Links in DB"""
-    
-    def _extract_and_store_links(self, toots):
-        """Extrahiert Links aus Toots"""
-```
-
-### main.py Entry-Point
-
-```python
-@functions_framework.http
-def mastodon_connector_activate(request):
-    service = MastodonService()
-    service.fetch_and_store_links()
-    return "OK", 200
-```
-
-## Workflow für Kollegen
-
-Diese Function ist ein Template für:
-- `functions/alerts/` (Google Alerts)
-- `functions/mail/` (Mail Service)
-
-Gleiche Struktur anwenden:
-1. Entry-Point Funktion in `main.py`
-2. Service-Klasse in `{service}_service.py`
-3. Mock-Tests in `test_{service}_service.py`
-4. Individuelles `cloudbuild.yaml`
-
+LOG_LEVEL: Legt die Log-Ausführlichkeit fest (z. B. DEBUG, INFO).
