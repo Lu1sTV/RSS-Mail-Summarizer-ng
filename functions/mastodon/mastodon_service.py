@@ -91,7 +91,8 @@ class MastodonService:
     
     def _extract_and_store_links(self, toots: list) -> list:
         """
-        Extrahiert Links aus Toots und speichert sie in der Datenbank.
+        Extrahiert Links aus Toots und speichert sie zusammen mit 
+        Mastodon-Metadaten in der Datenbank.
         
         Args:
             toots: Liste der Toots zum Verarbeiten
@@ -102,7 +103,18 @@ class MastodonService:
         new_links = []
         
         for toot in toots:
+            # 1. Metadaten aus dem Toot-Dictionary extrahieren
+            toot_url = toot.get("url")
+            created_at = toot.get("created_at")
+            # created_at ist oft ein datetime-Objekt, wir machen einen String daraus
+            toot_date_str = created_at.strftime("%Y-%m-%d %H:%M:%S") if created_at else None
+
+            # 2. HTML parsen
             soup = BeautifulSoup(toot["content"], "html.parser")
+            
+            # 3. Den reinen Text ohne HTML-Tags extrahieren (als Kontext für später)
+            clean_text = soup.get_text(separator=" ", strip=True)
+
             for a_tag in soup.find_all("a", href=True):
                 href = a_tag["href"]
                 if (
@@ -110,7 +122,13 @@ class MastodonService:
                     and "hashtag" not in a_tag.get("rel", [])
                     and "mention" not in a_tag.get("class", [])
                 ):
-                    self.repo.add_url_to_website_collection(href)
+                    # 4. URL UND die Metadaten an die Datenbank übergeben
+                    self.repo.add_url_to_website_collection(
+                        url=href,
+                        toot_text=clean_text,
+                        toot_url=toot_url,
+                        toot_date=toot_date_str
+                    )
                     new_links.append(href)
         
         return new_links

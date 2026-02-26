@@ -2,14 +2,11 @@
 Dieses Modul kapselt alle Firestore-Zugriffe fuer die Mastodon Function.
 """
 
-# package imports
 import os
-import json
 import logging
 from datetime import datetime
 import re
 from urllib.parse import urlparse, parse_qs, unquote
-
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
@@ -25,12 +22,10 @@ logger = logging.getLogger("app_logger")
 
 def initialize_firebase():
     if not firebase_admin._apps:
-        # Prüfen, ob wir in der Google Cloud laufen (K_SERVICE wird von Cloud Run gesetzt)
         if os.getenv('K_SERVICE'):
             logger.info("Cloud-Umgebung erkannt: Nutze Application Default Credentials.")
             initialize_app()
         else:
-            # Lokal suchen wir weiterhin nach der Datei für Tests
             SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
             if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
                 logger.info(f"Lokale Umgebung: Nutze {SERVICE_ACCOUNT_KEY_PATH}")
@@ -59,142 +54,42 @@ def safe_url(google_url: str) -> str:
 
     return url
 
-
 class FirestoreRepository:
-    """Kapselt alle Firestore-Operationen fuer die Function."""
+    """Kapselt alle Firestore-Operationen fuer die Mastodon Function."""
 
     def __init__(self):
         initialize_firebase()
         self.db = firestore.client()
 
-    def add_datarecord(
-        self,
-        url,
-        category=None,
-        summary=None,
-        reading_time=None,
-        subcategory=None,
-        mail_sent=False,
-        hn_points=None,
-        processed=None,
-    ):
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
-        update_data = {
-            "processed": True,
-            "timestamp": timestamp,
-            "url": url,
-        }
-        if category:
-            update_data["category"] = category
-        if summary is not None:
-            update_data["summary"] = summary
-        if reading_time is not None:
-            update_data["reading_time"] = reading_time
-        if subcategory is not None:
-            update_data["subcategory"] = subcategory
-        if mail_sent is not None:
-            update_data["mail_sent"] = mail_sent
-        if hn_points is not None:
-            update_data["hn_points"] = hn_points
-        if processed is not None:
-            update_data["processed"] = processed
-
-        self.db.collection("website").document(safe_url(url)).set(update_data, merge=True)
-        logger.info(f"Datensatz aktualisiert: {url}")
-
-    def is_duplicate_url(self, url):
-        doc = self.db.collection("website").document(safe_url(url)).get()
-        return doc.exists
-
-    def get_unsent_entries(self):
-        logger.info("Lade Eintraege aus Firestore mit mail_sent=False ...")
-        try:
-            query = self.db.collection("website").where("mail_sent", "==", False).stream()
-        except Exception as e:
-            logger.error(f"Fehler beim Abrufen der Eintraege: {e}")
-            return []
-
-        entries = []
-        for doc in query:
-            data = doc.to_dict() or {}
-            url = data.get("url")
-
-            if not url or not isinstance(url, str):
-                logger.warning(f"Ueberspringe Eintrag ohne gueltige URL: {data}")
-                continue
-
-            entry = {
-                "doc_id": doc.id,
-                "url": url,
-                "category": data.get("category"),
-                "summary": data.get("summary"),
-                "subcategory": data.get("subcategory"),
-                "reading_time": data.get("reading_time"),
-                "hn_points": data.get("hn_points"),
-                "timestamp": data.get("timestamp"),
-            }
-            entries.append(entry)
-            logger.debug(
-                f"Hinzugefuegt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})"
-            )
-
-        return entries
-
-    def mark_as_sent(self, entries):
-        for entry in entries:
-            url = entry.get("url")
-            if not url:
-                logger.warning(f"Kein URL-Feld fuer Eintrag: {entry}")
-                continue
-            self.db.collection("website").document(safe_url(url)).update({"mail_sent": True})
-
-    def add_url_to_website_collection(self, url):
-        doc_ref = self.db.collection("website").document(safe_url(url))
-        doc = doc_ref.get()
-        if not doc.exists:
-            doc_ref.set(
-                {
+    def add_url_to_website_collection(self, url, toot_text=None, toot_url=None, toot_date=None):
+            """Speichert eine neu gefundene URL inkl. Mastodon-Metadaten in der DB."""
+            doc_ref = self.db.collection("website").document(safe_url(url))
+            doc = doc_ref.get()
+            
+            if not doc.exists:
+                # Basis-Daten
+                data = {
                     "url": url,
                     "processed": False,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                    "source": "mastodon"
                 }
-            )
-            logger.info(f"Neue URL gespeichert: {url}")
-        else:
-            logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
-
-    def add_alert_to_website_collection(self, url, category):
-        doc_ref = self.db.collection("website").document(safe_url(url))
-        update_data = {
-            "url": url,
-            "alert": True,
-            "category": category,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-            "processed": False,
-        }
-        doc_ref.set(update_data, merge=True)
-        logger.info(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
-
-    def get_unprocessed_urls(self):
-        urls = []
-        for doc in self.db.collection("website").where("processed", "==", False).stream():
-            data = doc.to_dict()
-            urls.append(
-                {
-                    "url": data.get("url"),
-                    "alert": data.get("alert", False),
-                }
-            )
-        return urls
-
-    def is_alert(self, url):
-        doc_ref = self.db.collection("website").document(safe_url(url)).get()
-        if doc_ref.exists:
-            data = doc_ref.to_dict()
-            return data.get("alert", False)
-        return False
+                
+                # Neue Felder hinzufügen, falls sie mitgegeben wurden
+                if toot_text:
+                    data["toot_text"] = toot_text
+                if toot_url:
+                    data["toot_url"] = toot_url
+                if toot_date:
+                    data["toot_date"] = toot_date
+    
+                doc_ref.set(data)
+                logger.info(f"Neue URL gespeichert: {url}")
+            else:
+                logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
 
     def get_last_toot_id(self):
+        """Holt die ID des zuletzt verarbeiteten Toots, um Duplikate zu vermeiden."""
         docs = (
             self.db.collection("mastodon_toots")
             .order_by("toot_id", direction=firestore.Query.DESCENDING)
@@ -208,6 +103,7 @@ class FirestoreRepository:
         return None
 
     def save_last_toot_id(self, toot_id: int):
+        """Speichert die neueste gelesene Toot-ID."""
         data = {
             "toot_id": int(toot_id),
             "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
