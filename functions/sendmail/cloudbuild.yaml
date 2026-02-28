@@ -1,0 +1,25 @@
+steps:
+  - name: 'python:3.11'
+    entrypoint: pip
+    args: ['install', '-r', 'requirements.txt', '--target', '/workspace']
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - functions
+      - deploy
+      - sendmail_trigger
+      - --gen2
+      - --runtime=python311
+      - --region=europe-west3
+      - --source=.
+      - --entry-point=sendmail_trigger
+      - --trigger-http
+      - --allow-unauthenticated
+      - --memory=2GiB
+      - --timeout=120s
+      - --set-secrets=CREDENTIALS_CREDENTIALS_JSON=credentials-credentials-json:latest,CREDENTIALS_TOKEN_JSON=credentials-token-json:latest,GEMINI_API_KEY=gemini-api-key:latest,RECIPIENT_EMAIL=recipient-email:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,RSS_VERTEX_AI_KEY=rss-vertex-ai-key:latest,SENDER_EMAIL=sender-email:latest
+      - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=INFO
+
+options:
+  logging: CLOUD_LOGGING_ONLY
