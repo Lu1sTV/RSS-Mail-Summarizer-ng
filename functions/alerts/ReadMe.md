@@ -8,7 +8,7 @@ Das Skript (`main.py`) ist objektorientiert aufgebaut und umfasst folgende Kernk
 
 * **Config**: Enthält statische Konfigurationsdaten wie Label-Namen, Blacklists für URLs und API-Scopes.
 * **FirestoreDatabase**: Initialisiert die Verbindung zu Firebase/Firestore und speichert die validierten URLs in der Collection `website`.
-* **GmailService**: Verwaltet die Authentifizierung mit der Gmail-API, ruft E-Mails ab, extrahiert den HTML-Body und verschiebt verarbeitete E-Mails in ein neues Label.
+* **GmailService**: Verwaltet die Authentifizierung mit der Gmail-API, ruft E-Mails ab, extrahiert den HTML-Body und verschiebt verarbeitete E-Mails in ein neues Label. Unterstützt die lokale `token.json` sowie den Abruf über den Google Cloud Secret Manager.
 * **AlertProcessor**: Koordiniert den Ablauf. Parst das HTML mit BeautifulSoup, bereinigt Google-Weiterleitungs-URLs, prüft gegen die Blacklist und übergibt gültige Links an die Datenbank.
 * **alerts_mvp_endpoint**: Der HTTP-Einstiegspunkt für das Functions Framework, der bei Aufruf der Cloud Function ausgeführt wird.
 
@@ -22,19 +22,23 @@ Das Skript (`main.py`) ist objektorientiert aufgebaut und umfasst folgende Kernk
   * `firebase-admin>=6.0.0`
   * `beautifulsoup4>=4.12.0`
 
-Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötigt:
+Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötigt, wenn lokal getestet wird:
 * `credentials.json` (OAuth2 Client-ID für Gmail)
 * `serviceAccountKey.json` (Firebase/GCP Service Account Key)
 
 ## Lokales Setup und Testen
 
-1. Erstelle eine virtuelle Umgebung mit Python 3.11 und aktiviere sie.
+1. Erstelle eine virtuelle Umgebung mit Python 3.11 im Root-Verzeichnis und aktiviere sie:
+   ```bash
+   python3.11 -m venv venv
+   source venv/bin/activate
+   ```
 2. Installiere die Abhängigkeiten:
    ```bash
    pip install -r requirements.txt
    ```
 3. Platziere die `credentials.json` und `serviceAccountKey.json` im Ordner `keys/`.
-4. Navigiere in den Ordner `keys/` und generiere das Token (öffnet den Browser für den Google-Login):
+4. Navigiere in den Ordner `keys/` und generiere das Token:
    ```bash
    cd keys
    python generate_token.py
@@ -51,16 +55,35 @@ Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötig
 
 ## Deployment in die Google Cloud (GCP)
 
-1. Lade das Google Cloud CLI herunter und installiere es (https://cloud.google.com/sdk/docs/install).
-2. Authentifiziere dich im Terminal:
+1. Authentifiziere dich im Terminal:
    ```bash
    gcloud auth login
    ```
-3. Verknüpfe das CLI mit deinem Google Cloud Projekt:
+2. Verknüpfe das CLI mit deinem Google Cloud Projekt:
    ```bash
    gcloud config set project <PROJECT_ID>
    ```
-4. Führe den Deployment-Befehl aus dem Hauptverzeichnis aus:
+3. Erstelle die Secrets für die Zugangsdaten im Google Cloud Secret Manager:
+   ```bash
+   gcloud secrets create gmail-token-json --replication-policy="automatic"
+   gcloud secrets create rss-firebase-key --replication-policy="automatic"
+   ```
+4. Lade die lokalen Dateien in die erstellten Secrets hoch:
+   ```bash
+   gcloud secrets versions add gmail-token-json --data-file="keys/token.json"
+   gcloud secrets versions add rss-firebase-key --data-file="keys/serviceAccountKey.json"
+   ```
+5. Erteile dem Dienstkonto der Cloud Function die Berechtigung, die Secrets auszulesen:
+   ```bash
+   gcloud secrets add-iam-policy-binding gmail-token-json \
+     --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>" \
+     --role="roles/secretmanager.secretAccessor"
+
+   gcloud secrets add-iam-policy-binding rss-firebase-key \
+     --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>" \
+     --role="roles/secretmanager.secretAccessor"
+   ```
+6. Führe den Deployment-Befehl aus dem Hauptverzeichnis aus. Die Secrets werden dabei automatisch als Umgebungsvariablen eingebunden:
    ```bash
    gcloud functions deploy alerts-handler \
      --gen2 \
@@ -70,12 +93,13 @@ Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötig
      --trigger-http \
      --runtime=python311 \
      --memory=512MiB \
-     --timeout=60s
+     --timeout=60s \
+     --set-secrets=GMAIL_TOKEN_JSON=gmail-token-json:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest
    ```
 
 ## Automatisierung mit Cloud Scheduler
 
-Um die Cloud Function automatisch um 08:00 und 16:00 Uhr deutscher Zeit auszuführen, wird ein Cloud Scheduler Job eingerichtet. Dieser benötigt zwingend eine OIDC-Authentifizierung.
+Um die Cloud Function automatisch um 08:00 und 16:00 Uhr deutscher Zeit auszuführen, wird ein Cloud Scheduler Job eingerichtet.
 
 1. Erteile dem Dienstkonto die Berechtigung, die Cloud Function (Gen 2) aufzurufen:
    ```bash
