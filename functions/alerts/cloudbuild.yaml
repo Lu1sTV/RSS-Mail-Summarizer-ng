@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - functions
+      - deploy
+      - alerts-handler
+      - --gen2
+      - --region=europe-west3
+      - --source=.
+      - --entry-point=alerts_mvp_endpoint
+      - --trigger-http
+      # - --allow-unauthenticated
+      - --runtime=python311
+      - --memory=512MiB
+      - --timeout=60s
+
+options:
+  logging: CLOUD_LOGGING_ONLY
