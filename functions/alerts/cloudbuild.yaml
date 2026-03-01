@@ -10,10 +10,10 @@ steps:
       - --source=.
       - --entry-point=alerts_mvp_endpoint
       - --trigger-http
-      # - --allow-unauthenticated
       - --runtime=python311
       - --memory=512MiB
       - --timeout=60s
+      - --set-secrets=GMAIL_TOKEN_JSON=gmail-token-json:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY
