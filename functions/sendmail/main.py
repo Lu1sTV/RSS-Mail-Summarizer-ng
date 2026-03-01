@@ -81,41 +81,37 @@ class SendMailService:
     # ---- Gmail helpers ----
     def get_gmail_service(self):
         creds = None
-    # Der Scope muss mit dem übereinstimmen, den du beim Erstellen des Tokens vergeben hast
         scopes = ["https://www.googleapis.com/auth/gmail.modify"]
 
-    # 1. VERSUCH: Aus der Umgebungsvariable (Secret Manager)
-    # Cloud Build / Cloud Functions schreiben das Secret in diese Variable
+        # 1. Secret aus Umgebungsvariable laden
         token_json_str = os.environ.get("CREDENTIALS_TOKEN_JSON")
 
         if token_json_str:
             try:
-            # Wir laden das JSON direkt aus dem String
+                # Säubern und Laden
+                token_json_str = token_json_str.strip()
                 creds_info = json.loads(token_json_str)
                 creds = Credentials.from_authorized_user_info(creds_info, scopes)
-                logging.info("Gmail-Token erfolgreich aus Secret Manager geladen.")
+                logging.info("Gmail-Token erfolgreich aus Umgebungsvariable geladen.")
             except Exception as e:
-                logging.error(f"Fehler beim Parsen des Tokens aus Umgebungsvariable: {e}")
+                logging.error(f"Kritischer Fehler beim Parsen des Tokens: {e}")
+                raise
 
-    # 2. VERSUCH: Falls kein Secret da ist (z.B. lokaler Test auf dem Mac)
+        # 2. Backup: Lokale Datei (für Tests)
         if not creds:
             token_path = "credentials/token.json"
             if os.path.exists(token_path):
                 creds = Credentials.from_authorized_user_file(token_path, scopes)
                 logging.info(f"Gmail-Token aus lokaler Datei geladen: {token_path}")
 
-        # PRÜFUNG: Haben wir jetzt gültige Credentials?
+        # 3. Validierung & Refresh (Wichtig gegen Timeouts!)
         if not creds or not creds.valid:
-            # Falls der Token nur abgelaufen ist, versuchen wir ihn zu refreshen
             if creds and creds.expired and creds.refresh_token:
                 from google.auth.transport.requests import Request
                 creds.refresh(Request())
                 logging.info("Gmail-Token wurde erfolgreich erneuert (refreshed).")
             else:
-                raise RuntimeError(
-                    "Kein gültiges Gmail-Token gefunden. "
-                    "Stelle sicher, dass CREDENTIALS_TOKEN_JSON im Secret Manager korrekt gesetzt ist."
-                )
+                raise RuntimeError("Kein gültiges Gmail-Token gefunden.")
 
         return build("gmail", "v1", credentials=creds)
 
