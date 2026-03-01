@@ -12,7 +12,7 @@ steps:
       - --source=.
       - --entry-point=mastodon_connector_activate
       - --trigger-http
-      - --allow-unauthenticated
+      #- --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
