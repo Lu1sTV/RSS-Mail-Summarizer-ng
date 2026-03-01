@@ -1,0 +1,5 @@
+beautifulsoup4==4.12.3
+firebase-admin==6.6.0
+functions-framework==3.9.2
+Mastodon.py==2.0.1
+python-dotenv==1.0.1
