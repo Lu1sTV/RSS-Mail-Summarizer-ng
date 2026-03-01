@@ -1,0 +1,29 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - builds
+      - submit
+      - functions/alerts
+      - --config=functions/alerts/cloudbuild.yaml
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - builds
+      - submit
+      - functions/mastodon
+      - --config=functions/mastodon/cloudbuild.yaml
+      - --substitutions=_PROJECT_ID=$PROJECT_ID
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - builds
+      - submit
+      - functions/sendmail
+      - --config=functions/sendmail/cloudbuild.yaml
+      - --substitutions=_PROJECT_ID=$PROJECT_ID
+
+options:
+  logging: CLOUD_LOGGING_ONLY
