@@ -45,8 +45,10 @@ from google import genai
 from google.genai import types
 
 # Logger
-to_load = True
-from utils.logger import logger
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 
 load_dotenv()
 
@@ -79,11 +81,42 @@ class SendMailService:
     # ---- Gmail helpers ----
     def get_gmail_service(self):
         creds = None
-        token_path = "credentials/token.json"
-        if os.path.exists(token_path):
-            creds = Credentials.from_authorized_user_file(token_path, ["https://www.googleapis.com/auth/gmail.send"])
+    # Der Scope muss mit dem übereinstimmen, den du beim Erstellen des Tokens vergeben hast
+        scopes = ["https://www.googleapis.com/auth/gmail.modify"]
+
+    # 1. VERSUCH: Aus der Umgebungsvariable (Secret Manager)
+    # Cloud Build / Cloud Functions schreiben das Secret in diese Variable
+        token_json_str = os.environ.get("CREDENTIALS_TOKEN_JSON")
+
+        if token_json_str:
+            try:
+            # Wir laden das JSON direkt aus dem String
+                creds_info = json.loads(token_json_str)
+                creds = Credentials.from_authorized_user_info(creds_info, scopes)
+                logging.info("Gmail-Token erfolgreich aus Secret Manager geladen.")
+            except Exception as e:
+                logging.error(f"Fehler beim Parsen des Tokens aus Umgebungsvariable: {e}")
+
+    # 2. VERSUCH: Falls kein Secret da ist (z.B. lokaler Test auf dem Mac)
+        if not creds:
+            token_path = "credentials/token.json"
+            if os.path.exists(token_path):
+                creds = Credentials.from_authorized_user_file(token_path, scopes)
+                logging.info(f"Gmail-Token aus lokaler Datei geladen: {token_path}")
+
+        # PRÜFUNG: Haben wir jetzt gültige Credentials?
         if not creds or not creds.valid:
-            raise RuntimeError("Kein gültiges Gmail-Credentials-Token gefunden.")
+            # Falls der Token nur abgelaufen ist, versuchen wir ihn zu refreshen
+            if creds and creds.expired and creds.refresh_token:
+                from google.auth.transport.requests import Request
+                creds.refresh(Request())
+                logging.info("Gmail-Token wurde erfolgreich erneuert (refreshed).")
+            else:
+                raise RuntimeError(
+                    "Kein gültiges Gmail-Token gefunden. "
+                    "Stelle sicher, dass CREDENTIALS_TOKEN_JSON im Secret Manager korrekt gesetzt ist."
+                )
+
         return build("gmail", "v1", credentials=creds)
 
     def send_mail(self, subject=None, mail_body_file=None, attachment_filepath=None):
