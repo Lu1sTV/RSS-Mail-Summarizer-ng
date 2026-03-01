@@ -1,0 +1,14 @@
+beautifulsoup4==4.12.3
+firebase-admin==6.6.0
+functions-framework==3.9.2
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.0.0
+google-cloud-secret-manager
+google-generativeai==0.8.4
+google-genai==1.36.0
+langchain-core==0.3.40
+langchain-google-genai==2.0.9
+Markdown==3.7
+python-dotenv==1.0.1
+requests==2.32.3
