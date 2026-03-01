@@ -1,15 +1,24 @@
+# Virtuelle Umgebung (Root)
+venv/
 .venv/
-__pycache__/
-.idea/
-rss_mail_summarizer/.env
-rss_mail_summarizer/serviceAccountKey.json
-rss_mail_summarizer/credentials
-rss_mail_summarizer/utils/serviceAccountKey.json
 
-# Google Auth & Keys
-**/keys/*.json
-serviceAccountKey.json
-token.json
-credentials.json
+# Python Cache
 __pycache__/
-.venv/
+*.py[cod]
+*$py.class
+
+# Sensible Daten / Keys 
+**/keys/token.json
+**/keys/serviceAccountKey.json
+**/keys/credentials.json
+token.json
+serviceAccountKey.json
+credentials.json
+
+# IDE spezifische Dateien
+.vscode/
+.idea/
+
+# OS spezifische Dateien
+.DS_Store
+Thumbs.db
