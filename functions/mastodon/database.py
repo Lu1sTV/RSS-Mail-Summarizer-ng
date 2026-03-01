@@ -71,6 +71,7 @@ class FirestoreRepository:
                 data = {
                     "url": url,
                     "processed": False,
+                    "mail_sent": False,
                     "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
                     "source": "mastodon"
                 }
