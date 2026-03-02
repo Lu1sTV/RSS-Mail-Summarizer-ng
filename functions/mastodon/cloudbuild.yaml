@@ -1,5 +1,4 @@
 steps:
-  # Deploy mastodon_connector function
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -12,11 +11,24 @@ steps:
       - --source=.
       - --entry-point=mastodon_connector_activate
       - --trigger-http
-      #- --allow-unauthenticated
       - --memory=2GiB
       - --timeout=120s
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
       - --set-env-vars=PROJECT_ID=${_PROJECT_ID},LOG_LEVEL=DEBUG
+
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        JOB_NAME="mastodon-connector-daily"
+        LOCATION="europe-west3"
+        URL="https://europe-west3-${_PROJECT_ID}.cloudfunctions.net/mastodon_connector"
+        if gcloud scheduler jobs describe $JOB_NAME --location=$LOCATION > /dev/null 2>&1; then
+          gcloud scheduler jobs update http $JOB_NAME --location=$LOCATION --schedule="0 8,20 * * *" --uri=$URL --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" --oidc-token-audience=$URL
+        else
+          gcloud scheduler jobs create http $JOB_NAME --location=$LOCATION --schedule="0 8,20 * * *" --uri=$URL --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" --oidc-token-audience=$URL
+        fi
 
 options:
   logging: CLOUD_LOGGING_ONLY
