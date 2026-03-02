@@ -13,6 +13,7 @@ steps:
       - --entry-point=mastodon_connector_activate
       - --trigger-http
       #- --allow-unauthenticated
+      - --service-account=serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com
       - --memory=2GiB
       - --timeout=120s
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
