@@ -15,21 +15,5 @@ steps:
       - --timeout=60s
       - --set-secrets=GMAIL_TOKEN_JSON=credentials-token-json:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest
 
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        JOB_NAME="alerts-handler-daily"
-        LOCATION="europe-west3"
-        URL="https://europe-west3-${_PROJECT_ID}.cloudfunctions.net/alerts-handler"
-        if gcloud scheduler jobs describe $$JOB_NAME --location=$$LOCATION > /dev/null 2>&1; then
-          echo "Update Job..."
-          gcloud scheduler jobs update http $$JOB_NAME --location=$$LOCATION --schedule="0 8,20 * * *" --uri=$$URL --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" --oidc-token-audience=$$URL
-        else
-          echo "Create Job..."
-          gcloud scheduler jobs create http $$JOB_NAME --location=$$LOCATION --schedule="0 8,20 * * *" --uri=$$URL --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" --oidc-token-audience=$$URL
-        fi
-        
 options:
   logging: CLOUD_LOGGING_ONLY
