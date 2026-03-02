@@ -74,8 +74,66 @@ class SendMailService:
     def __init__(self, sender_email: str, recipient_email: str):
         self.sender_email = sender_email
         self.recipient_email = recipient_email
+        self.gemini_api_key = self._get_gemini_api_key()
+        self.genai_client = None
 
         # LLM & Gmail initialisieren
+        self.llm = None
+
+    def _sanitize_api_key(self, raw_value, env_name):
+        if not raw_value:
+            return None
+
+        value = str(raw_value).strip().strip('"').strip("'")
+        if not value:
+            return None
+
+        if value.startswith("{"):
+            try:
+                payload = json.loads(value)
+                for field in ("api_key", "gemini_api_key", "GEMINI_API_KEY", "key"):
+                    extracted = payload.get(field)
+                    if isinstance(extracted, str) and extracted.strip():
+                        value = extracted.strip()
+                        break
+                else:
+                    logger.warning(
+                        "Umgebungsvariable %s enthält JSON ohne API-Key-Feld und wird ignoriert.",
+                        env_name,
+                    )
+                    return None
+            except Exception:
+                logger.warning(
+                    "Umgebungsvariable %s enthält ungültiges JSON und wird als Plain-Text versucht.",
+                    env_name,
+                )
+
+        value = value.replace("\r", "").replace("\n", "")
+        if any(char.isspace() for char in value):
+            value = "".join(value.split())
+
+        return value or None
+
+    def _get_gemini_api_key(self):
+        candidates = [LOCAL_GEMINI_KEY_ENV, SECRET_ENV, "GOOGLE_API_KEY"]
+        for env_name in candidates:
+            sanitized = self._sanitize_api_key(os.getenv(env_name), env_name)
+            if sanitized:
+                logger.info("Gemini API-Key aus %s geladen.", env_name)
+                return sanitized
+        return None
+
+    def _ensure_ai_clients(self):
+        if self.llm is not None and self.genai_client is not None:
+            return
+
+        if not self.gemini_api_key:
+            raise RuntimeError(
+                "Kein gültiger Gemini API-Key gefunden. Bitte setze GEMINI_API_KEY "
+                "(oder RSS_VERTEX_AI_KEY als Fallback) als Secret ohne Zeilenumbrüche."
+            )
+
+        self.genai_client = genai.Client(api_key=self.gemini_api_key)
         self.llm = self._init_llm()
 
     # ---- Gmail helpers ----
@@ -212,24 +270,14 @@ class SendMailService:
 
     # ---- LLM helpers ----
     def _init_llm(self):
-        # initialisiert ChatGoogleGenerativeAI analog zu früher
-        def get_gemini_api_key():
-            if LOCAL_GEMINI_KEY_ENV in os.environ:
-                return os.environ[LOCAL_GEMINI_KEY_ENV]
-            api_key = os.getenv(LOCAL_GEMINI_KEY_ENV)
-            if not api_key:
-                raise RuntimeError("Gemini API-Key nicht verfügbar.")
-            return api_key
-
         rate_limiter = InMemoryRateLimiter(
             requests_per_second=0.2,
             check_every_n_seconds=0.1,
             max_bucket_size=1,
         )
-        gemini_key = get_gemini_api_key()
         return ChatGoogleGenerativeAI(
             model="gemini-2.5-flash",
-            google_api_key=gemini_key,
+            google_api_key=self.gemini_api_key,
             temperature=0,
             max_tokens=None,
             timeout=None,
@@ -238,6 +286,7 @@ class SendMailService:
         )
 
     def summarise_and_categorize_websites(self, links_list):
+        self._ensure_ai_clients()
         logger.info(f"Starte Zusammenfassung & Kategorisierung für {len(links_list)} URLs.")
         prompt = self._build_prompt(links_list)
         return self._process_llm_response(prompt)
@@ -286,6 +335,7 @@ class SendMailService:
         return results
 
     def summarise_youtube_videos(self, youtube_urls):
+        self._ensure_ai_clients()
         # identical logic from earlier module
         results = {}
         categories = [
@@ -313,7 +363,7 @@ Anweisungen:
                     max_output_tokens=1024,
                     response_modalities=["TEXT"],
                 )
-                response = client.models.generate_content(
+                response = self.genai_client.models.generate_content(
                     model="gemini-2.5-flash",
                     contents=contents,
                     config=generate_config
