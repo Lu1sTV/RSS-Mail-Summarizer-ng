@@ -12,7 +12,7 @@ class Config:
 
     # True: alle neuen Einträge seit letztem Crawl holen (mit Pagination)
     # False: maximal ENTRY_LIMIT neue Einträge seit letztem Crawl holen
-    FETCH_ALL_SINCE_LAST = True
+    FETCH_ALL_SINCE_LAST = False
     
     # Projekt-Metadaten
     PROJECT_ID = os.environ.get('PROJECT_ID', 'mail-summerizer-486619')
