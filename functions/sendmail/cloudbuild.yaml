@@ -29,10 +29,23 @@ steps:
         JOB_NAME="sendmail-trigger-daily"
         LOCATION="europe-west3"
         URL="https://europe-west3-${_PROJECT_ID}.cloudfunctions.net/sendmail_trigger"
-        if gcloud scheduler jobs describe $JOB_NAME --location=$LOCATION > /dev/null 2>&1; then
-          gcloud scheduler jobs update http $JOB_NAME --location=$LOCATION --schedule="15 8,20 * * *" --uri=$URL --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" --oidc-token-audience=$URL
+        
+        if gcloud scheduler jobs describe $$JOB_NAME --location=$$LOCATION > /dev/null 2>&1; then
+          echo "Job $$JOB_NAME existiert bereits. Aktualisiere..."
+          gcloud scheduler jobs update http $$JOB_NAME \
+            --location=$$LOCATION \
+            --schedule="15 8,20 * * *" \
+            --uri=$$URL \
+            --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" \
+            --oidc-token-audience=$$URL
         else
-          gcloud scheduler jobs create http $JOB_NAME --location=$LOCATION --schedule="15 8,20 * * *" --uri=$URL --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" --oidc-token-audience=$URL
+          echo "Job $$JOB_NAME existiert nicht. Erstelle neu..."
+          gcloud scheduler jobs create http $$JOB_NAME \
+            --location=$$LOCATION \
+            --schedule="15 8,20 * * *" \
+            --uri=$$URL \
+            --oidc-service-account-email="serviceaccount-1@mail-summerizer-486619.iam.gserviceaccount.com" \
+            --oidc-token-audience=$$URL
         fi
 
 options:
