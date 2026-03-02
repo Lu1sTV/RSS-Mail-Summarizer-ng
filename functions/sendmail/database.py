@@ -162,3 +162,90 @@ def mark_as_sent(entries):
             default_logger.warning(f"Kein URL-Feld für Eintrag: {entry}")
             continue
         db.collection("website").document(safe_url(url)).update({"mail_sent": True})
+
+    # logger.info(f"{len(entries)} Einträge wurden als gesendet markiert.")
+
+
+# Weitere Hilfsfunktionen aus dem alten Modul, damit die Schnittstelle wieder identisch ist
+
+# Fügt eine neue unverarbeitete URL in die Datenbank ein
+
+def add_url_to_website_collection(url):
+    doc_ref = db.collection("website").document(safe_url(url))
+    doc = doc_ref.get()
+    if not doc.exists:
+        doc_ref.set(
+            {
+                "url": url,
+                "processed": False,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+            }
+        )
+        default_logger.info(f"Neue URL gespeichert: {url}")
+    else:
+        default_logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
+
+
+# Fügt oder aktualisiert eine Alert-URL mit Kategorie in der Datenbank
+
+def add_alert_to_website_collection(url, category):
+    doc_ref = db.collection("website").document(safe_url(url))
+    update_data = {
+        "url": url,
+        "alert": True,
+        "category": category,
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+        "processed": False,
+    }
+    doc_ref.set(update_data, merge=True)
+    default_logger.info(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
+
+
+# Holt alle unverarbeiteten URLs (inkl. Info ob es sich um Alerts handelt)
+
+def get_unprocessed_urls():
+    urls = []
+    for doc in db.collection("website").where("processed", "==", False).stream():
+        data = doc.to_dict()
+        urls.append(
+            {
+                "url": data.get("url"),
+                "alert": data.get("alert", False),
+            }
+        )
+    return urls
+
+
+# Prüft, ob eine bestimmte URL als Alert markiert ist
+
+def is_alert(url):
+    doc_ref = db.collection("website").document(safe_url(url)).get()
+    if doc_ref.exists:
+        data = doc_ref.to_dict()
+        return data.get("alert", False)
+    return False
+
+
+# Hilfsfunktionen für Mastodon (aus altem Repository)
+
+def get_last_toot_id():
+    docs = (
+        db.collection("mastodon_toots")
+        .order_by("toot_id", direction=firestore.Query.DESCENDING)
+        .limit(1)
+        .stream()
+    )
+
+    for doc in docs:
+        return doc.to_dict().get("toot_id")
+
+    return None
+
+
+def save_last_toot_id(toot_id: int):
+    data = {
+        "toot_id": int(toot_id),
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+    }
+    db.collection("mastodon_toots").add(data)
+    default_logger.info(f"Neue Toot-ID gespeichert: {toot_id}")

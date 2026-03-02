@@ -7,7 +7,7 @@ Rückverweise auf andere Verzeichnisse.
 
 ## Inhalt
 
-- `main.py` – enthält **alle** benötigten Klassen und Funktionen (LLM‑Zusammenfassung, Mail-Generierung, Firestore-Zugriff etc.) in der Klasse `SendMailService`. Dies ist der einzige Quellcode, der für Deployment nötig ist.
+- `main.py` – jetzt ein schlanker Einstiegspunkt. Die eigentliche Logik wurde auf mehrere Hilfsdateien verteilt (`gmail_utils.py`, `llm_helpers.py`, `report.py`, `utils.py`), sodass die Klasse `SendMailService` nur noch den Workflow koordiniert. Diese Modulstruktur erleichtert Wartung und Tests.
 - `database.py` – reines Firestore-/Datenbankmodul (unverändert).
 - `cloudbuild.yaml` – Build‑ und Deploy-Skript für diese Funktion.
 - `requirements.txt` – benötigte Python-Abhängigkeiten.
