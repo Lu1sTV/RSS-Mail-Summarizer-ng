@@ -118,6 +118,11 @@ class SendMailService:
                     hn_points=meta.get("hn_points"),
                     mail_sent=False,
                 )
+            
+            # 🔑 KRITISCH: Nach LLM-Aufrufen DB nochmal laden, um die neuen Summaries zu holen!
+            logger.info("Lade aktualisierte Einträge aus DB...")
+            unsent = get_unsent_entries()
+            logger.info(f"Aktualisierte Einträge geladen: {len(unsent)}")
 
         summaries_from_db = {
             entry["url"]: {
