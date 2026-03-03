@@ -49,6 +49,15 @@ class SendMailService:
         self.sender_email = sender_email
         self.recipient_email = recipient_email
         self.gemini_api_key = get_gemini_api_key()
+        
+        if not self.gemini_api_key:
+            logger.error("❌ KRITISCH: Kein gültiger Gemini API-Key gefunden! Überprüfe:")
+            logger.error("   - Umgebungsvariable GEMINI_API_KEY")
+            logger.error("   - Secret Manager 'gemini-api-key' ")
+            logger.error("   - Fallback RSS_VERTEX_AI_KEY")
+            raise RuntimeError("Kein Gemini API-Key konfiguriert. Cloud Function kann nicht starten.")
+        
+        logger.info("✓ Gemini API-Key erfolgreich geladen")
         self.ai = AIService(self.gemini_api_key)
 
     # ---- Core workflow ----
@@ -58,22 +67,48 @@ class SendMailService:
             logger.info("Keine ungesendeten Einträge gefunden.")
             return False
 
+        logger.info(f"Gefundene ungesendete Einträge: {len(unsent)}")
+
         urls_without_summary = []
         for e in unsent:
             summary = e.get("summary")
             if not summary or not str(summary).strip() or str(summary).strip().lower() in ["n/a", "none", "null"]:
                 urls_without_summary.append(e["url"])
 
-        logger.debug("URLs ohne gültige Summary: %s", urls_without_summary)
+        logger.info(f"URLs ohne gültige Summary: {len(urls_without_summary)}")
+        logger.debug("URLs ohne Summary: %s", urls_without_summary)
+
         if urls_without_summary:
             youtube_urls = [u for u in urls_without_summary if "youtube.com" in u or "youtu.be" in u]
             web_urls = [u for u in urls_without_summary if u not in youtube_urls]
+            
+            logger.info(f"Web-URLs zu verarbeiten: {len(web_urls)}, YouTube-URLs: {len(youtube_urls)}")
+            
             summaries = {}
+            
             if web_urls:
-                summaries.update(self.ai.summarise_and_categorize_websites(web_urls))
+                try:
+                    logger.info(f"Rufe summarise_and_categorize_websites mit {len(web_urls)} URLs auf...")
+                    web_results = self.ai.summarise_and_categorize_websites(web_urls)
+                    logger.info(f"summarise_and_categorize_websites returned {len(web_results)} results")
+                    summaries.update(web_results)
+                except Exception as e:
+                    logger.error(f"Fehler bei summarise_and_categorize_websites: {e}", exc_info=True)
+                    raise
+            
             if youtube_urls:
-                summaries.update(self.ai.summarise_youtube_videos(youtube_urls))
+                try:
+                    logger.info(f"Rufe summarise_youtube_videos mit {len(youtube_urls)} URLs auf...")
+                    youtube_results = self.ai.summarise_youtube_videos(youtube_urls)
+                    logger.info(f"summarise_youtube_videos returned {len(youtube_results)} results")
+                    summaries.update(youtube_results)
+                except Exception as e:
+                    logger.error(f"Fehler bei summarise_youtube_videos: {e}", exc_info=True)
+                    raise
+            
+            logger.info(f"Gesamt Summaries erhalten: {len(summaries)}")
             for url, meta in summaries.items():
+                logger.debug(f"Schreibe Summary für {url}: category={meta.get('category')}, summary={str(meta.get('summary'))[:50]}...")
                 add_datarecord(
                     url=url,
                     category=meta.get("category"),
