@@ -64,6 +64,8 @@ class FirestoreDatabase:
                 "category": category,
                 "alert": True,
                 "processed": False,
+                "mail_sent": False,
+                "podcast_generated": False,
                 "timestamp": firestore.SERVER_TIMESTAMP
             }, merge=True)
             logger.debug(f"URL gespeichert: {url} (Kategorie: {category})")
