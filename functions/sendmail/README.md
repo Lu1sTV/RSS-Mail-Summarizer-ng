@@ -28,5 +28,5 @@ Rückverweise auf andere Verzeichnisse.
    --trigger-http --allow-unauthenticated` (oder gemäß deiner üblichen
    Konfiguration).
 
-Die Funktion `sendmail_trigger` kann vom Scheduler oder einem anderen
+Die Funktion `sendmail-trigger` kann vom Scheduler oder einem anderen
 Trigger (z. B. Pub/Sub) angesprochen werden, um den Versand auszulösen.

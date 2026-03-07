@@ -5,7 +5,7 @@ steps:
     args:
       - functions
       - deploy
-      - podcast-generator
+      - podcast-trigger
       - --gen2
       - --region=europe-west3
       - --source=.

@@ -97,7 +97,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    ```
 7. Führe den Deployment-Befehl aus dem Hauptverzeichnis aus:
    ```bash
-   gcloud functions deploy podcast-generator \
+   gcloud functions deploy podcast-trigger \
      --gen2 \
      --region=europe-west3 \
      --source=. \

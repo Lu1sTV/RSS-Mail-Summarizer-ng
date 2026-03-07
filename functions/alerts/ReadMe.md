@@ -85,7 +85,7 @@ Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötig
    ```
 6. Führe den Deployment-Befehl aus dem Hauptverzeichnis aus. Die Secrets werden dabei automatisch als Umgebungsvariablen eingebunden:
    ```bash
-   gcloud functions deploy alerts-handler \
+   gcloud functions deploy alerts-connector \
      --gen2 \
      --region=europe-west3 \
      --source=. \

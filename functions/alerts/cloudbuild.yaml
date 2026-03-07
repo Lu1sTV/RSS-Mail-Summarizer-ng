@@ -5,7 +5,7 @@ steps:
     args:
       - functions
       - deploy
-      - alerts-handler
+      - alerts-connector
       - --gen2
       - --region=europe-west3
       - --source=.

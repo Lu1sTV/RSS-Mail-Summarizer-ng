@@ -5,7 +5,7 @@ steps:
     args:
       - functions
       - deploy
-      - mastodon_connector
+      - mastodon-connector
       - --gen2
       - --runtime=python311
       - --region=europe-west3

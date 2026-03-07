@@ -87,7 +87,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    ```
 6. Führe den Deployment-Befehl aus dem Hauptverzeichnis aus. Das Secret wird dabei automatisch als Umgebungsvariable eingebunden:
    ```bash
-   gcloud functions deploy rss_connector \
+   gcloud functions deploy rss-connector \
      --gen2 \
      --region=europe-west3 \
      --source=. \
