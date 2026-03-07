@@ -4,7 +4,7 @@ Dieses Modul kapselt alle Firestore-Zugriffe fuer die Mastodon Function.
 
 import os
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from urllib.parse import urlparse, parse_qs, unquote
 from dotenv import load_dotenv
@@ -61,29 +61,23 @@ class FirestoreRepository:
         initialize_firebase()
         self.db = firestore.client()
 
-    def add_url_to_website_collection(self, url, toot_text=None, toot_url=None, toot_date=None):
-            """Speichert eine neu gefundene URL inkl. Mastodon-Metadaten in der DB."""
+    def add_url_to_website_collection(self, url, feed_name="mastodon"):
+            """Speichert eine neu gefundene URL in der DB (einheitliches Schema)."""
             doc_ref = self.db.collection("website").document(safe_url(url))
             doc = doc_ref.get()
             
             if not doc.exists:
-                # Basis-Daten
                 data = {
                     "url": url,
+                    "source": "mastodon",
+                    "feed": feed_name,
                     "processed": False,
                     "mail_sent": False,
                     "podcast_generated": False,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-                    "source": "mastodon"
+                    "time_stamp": datetime.now(timezone.utc),
+                    "category": "",
+                    "sub_category": "",
                 }
-                
-                # Neue Felder hinzufügen, falls sie mitgegeben wurden
-                if toot_text:
-                    data["toot_text"] = toot_text
-                if toot_url:
-                    data["toot_url"] = toot_url
-                if toot_date:
-                    data["toot_date"] = toot_date
     
                 doc_ref.set(data)
                 logger.info(f"Neue URL gespeichert: {url}")

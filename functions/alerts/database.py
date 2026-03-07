@@ -1,8 +1,11 @@
 import os
+import re
 import sys
 import json
 import logging
+from datetime import datetime, timezone
 from typing import Optional
+from urllib.parse import urlparse, parse_qs, unquote
 
 import firebase_admin
 from firebase_admin import credentials, firestore
@@ -15,6 +18,22 @@ if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
     handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
     logger.addHandler(handler)
+
+
+def safe_url(url: str) -> str:
+    """Extrahiert echte URL aus Google Redirect und macht sie Firestore-kompatibel."""
+    parsed = urlparse(url)
+    qs = parse_qs(parsed.query)
+    target = qs.get("url")
+    if target:
+        url = unquote(target[0])
+
+    url = url.strip()
+    url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
+    url = re.sub(r"-+", "-", url)
+    url = url.strip("-")
+
+    return url
 
 
 class FirestoreDatabase:
@@ -42,19 +61,22 @@ class FirestoreDatabase:
             logger.error(f"Firestore connection failed: {e}")
             raise RuntimeError(f"Firestore Connection failed: {str(e)}")
 
-    def save_url(self, url: str, category: str) -> None:
-        """Save an alert URL to Firestore with merge."""
+    def save_url(self, url: str, alert_name: str) -> None:
+        """Save an alert URL to Firestore (einheitliches Schema)."""
         try:
-            doc_id: str = url.replace("https://", "").replace("http://", "").replace("/", "-")[:250]
+            doc_id = safe_url(url)
             self.db.collection("website").document(doc_id).set({
                 "url": url,
-                "category": category,
-                "alert": True,
+                "source": "alerts",
+                "feed": alert_name,
                 "processed": False,
+                "mail_sent": False,
                 "podcast_generated": False,
-                "timestamp": firestore.SERVER_TIMESTAMP,
+                "time_stamp": datetime.now(timezone.utc),
+                "category": "",
+                "sub_category": "",
             }, merge=True)
-            logger.debug(f"Saved URL: {url} (category: {category})")
+            logger.debug(f"Saved URL: {url} (feed: {alert_name})")
         except Exception as e:
             logger.error(f"Failed to save URL {url}: {e}")
             raise

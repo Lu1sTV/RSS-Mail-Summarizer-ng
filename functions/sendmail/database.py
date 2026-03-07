@@ -1,7 +1,9 @@
 """
 Datenbankzugriff für die eigenständige `sendmail`-Function.
-Die Originalfunktionen aus dem Hauptprojekt wurden hierher kopiert,
-um die Abhängigkeit zum `rss_mail_summarizer` Paket zu eliminieren.
+
+Einheitliches Schema:
+  source, mail_sent, podcast_generated, time_stamp, feed,
+  processed, category, sub_category, url
 """
 
 # package imports
@@ -12,7 +14,7 @@ from firebase_admin import credentials, firestore, initialize_app
 import firebase_admin
 from urllib.parse import urlparse, parse_qs, unquote
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 # lokaler Logger
 import logging
@@ -84,12 +86,12 @@ def safe_url(google_url: str) -> str:
 
 # Fügt Einträge in die Datenbank ein oder aktualisiert bestehende Einträge
 
-def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None,
+def add_datarecord(url, category=None, summary=None, reading_time=None, sub_category=None,
                    mail_sent=False, hn_points=None, processed=None):
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    """Aktualisiert einen Eintrag mit LLM-Ergebnissen (einheitliches Schema)."""
     update_data = {
         "processed": True,
-        "timestamp": timestamp,
+        "time_stamp": datetime.now(timezone.utc),
         "url": url,
     }
     if category:
@@ -98,8 +100,8 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
         update_data["summary"] = summary
     if reading_time is not None:
         update_data["reading_time"] = reading_time
-    if subcategory is not None:
-        update_data["subcategory"] = subcategory
+    if sub_category is not None:
+        update_data["sub_category"] = sub_category
     if mail_sent is not None:
         update_data["mail_sent"] = mail_sent
     if hn_points is not None:
@@ -140,15 +142,17 @@ def get_unsent_entries():
         entry = {
             "doc_id": doc.id,
             "url": url,
+            "source": data.get("source"),
+            "feed": data.get("feed"),
             "category": data.get("category"),
             "summary": data.get("summary"),
-            "subcategory": data.get("subcategory"),
+            "sub_category": data.get("sub_category"),
             "reading_time": data.get("reading_time"),
             "hn_points": data.get("hn_points"),
-            "timestamp": data.get("timestamp"),
+            "time_stamp": data.get("time_stamp"),
         }
         entries.append(entry)
-        default_logger.debug(f"Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
+        default_logger.debug(f"Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Sub-Kategorie: {entry['sub_category']})")
 
     return entries
 
@@ -166,41 +170,6 @@ def mark_as_sent(entries):
     # logger.info(f"{len(entries)} Einträge wurden als gesendet markiert.")
 
 
-# Weitere Hilfsfunktionen aus dem alten Modul, damit die Schnittstelle wieder identisch ist
-
-# Fügt eine neue unverarbeitete URL in die Datenbank ein
-
-def add_url_to_website_collection(url):
-    doc_ref = db.collection("website").document(safe_url(url))
-    doc = doc_ref.get()
-    if not doc.exists:
-        doc_ref.set(
-            {
-                "url": url,
-                "processed": False,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-            }
-        )
-        default_logger.info(f"Neue URL gespeichert: {url}")
-    else:
-        default_logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
-
-
-# Fügt oder aktualisiert eine Alert-URL mit Kategorie in der Datenbank
-
-def add_alert_to_website_collection(url, category):
-    doc_ref = db.collection("website").document(safe_url(url))
-    update_data = {
-        "url": url,
-        "alert": True,
-        "category": category,
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-        "processed": False,
-    }
-    doc_ref.set(update_data, merge=True)
-    default_logger.info(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
-
-
 # Holt alle unverarbeiteten URLs (inkl. Info ob es sich um Alerts handelt)
 
 def get_unprocessed_urls():
@@ -210,42 +179,17 @@ def get_unprocessed_urls():
         urls.append(
             {
                 "url": data.get("url"),
-                "alert": data.get("alert", False),
+                "is_alert": data.get("source") == "alerts",
             }
         )
     return urls
 
 
-# Prüft, ob eine bestimmte URL als Alert markiert ist
+# Prüft, ob eine bestimmte URL als Alert markiert ist (source == "alerts")
 
 def is_alert(url):
     doc_ref = db.collection("website").document(safe_url(url)).get()
     if doc_ref.exists:
         data = doc_ref.to_dict()
-        return data.get("alert", False)
+        return data.get("source") == "alerts"
     return False
-
-
-# Hilfsfunktionen für Mastodon (aus altem Repository)
-
-def get_last_toot_id():
-    docs = (
-        db.collection("mastodon_toots")
-        .order_by("toot_id", direction=firestore.Query.DESCENDING)
-        .limit(1)
-        .stream()
-    )
-
-    for doc in docs:
-        return doc.to_dict().get("toot_id")
-
-    return None
-
-
-def save_last_toot_id(toot_id: int):
-    data = {
-        "toot_id": int(toot_id),
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-    }
-    db.collection("mastodon_toots").add(data)
-    default_logger.info(f"Neue Toot-ID gespeichert: {toot_id}")
