@@ -5,7 +5,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
-SECRET_ENV = "RSS_VERTEX_AI_KEY"
+SECRET_ENV = "GEMINI_API_KEY_SECRET"
 
 
 def _sanitize_api_key(raw_value, env_name):
@@ -50,7 +50,7 @@ def _sanitize_api_key(raw_value, env_name):
 
 
 def get_gemini_api_key():
-    """Return a valid Gemini/Vertex AI key from environment or secrets.
+    """Return a valid Gemini key from environment or secrets.
 
     Mirrors the logic that used to live on ``SendMailService``. The caller
     can simply call this once and raise if no key is present.

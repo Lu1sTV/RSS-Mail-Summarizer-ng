@@ -25,5 +25,15 @@ steps:
       - --config=functions/sendmail/cloudbuild.yaml
       - --substitutions=_PROJECT_ID=$PROJECT_ID
 
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - builds
+      - submit
+      - functions/rss
+      - --config=functions/rss/cloudbuild.yaml
+      - --substitutions=_PROJECT_ID=$PROJECT_ID
+
+
 options:
   logging: CLOUD_LOGGING_ONLY

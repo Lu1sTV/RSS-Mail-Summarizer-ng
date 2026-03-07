@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 # --------------------- Utilities ---------------------------------------
 LOCAL_GEMINI_KEY_ENV = "GEMINI_API_KEY"
-SECRET_ENV = "RSS_VERTEX_AI_KEY"
+SECRET_ENV = "GEMINI_API_KEY_SECRET"
 
 
 def _sanitize_api_key(raw_value, env_name):
@@ -179,7 +179,7 @@ class AIService:
     def _init_llm(self):
         rate_limiter = InMemoryRateLimiter(requests_per_second=0.2, check_every_n_seconds=0.1, max_bucket_size=1)
         return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model="gemini-3-flash",
             google_api_key=self.gemini_api_key,
             temperature=0,
             max_tokens=None,
@@ -398,7 +398,7 @@ Anweisungen:
 """
                 contents = [youtube_video, types.Part.from_text(text=prompt_text)]
                 generate_config = types.GenerateContentConfig(temperature=0, max_output_tokens=1024, response_modalities=["TEXT"])
-                response = self.genai_client.models.generate_content(model="gemini-2.5-flash", contents=contents, config=generate_config)
+                response = self.genai_client.models.generate_content(model="gemini-3-flash", contents=contents, config=generate_config)
                 text = response.text.strip()
                 summary_match = re.search(r"Summary:\s*(.+)", text, re.IGNORECASE)
                 reading_time_match = re.search(r"Reading\s*Time:\s*(\d+)", text, re.IGNORECASE)
@@ -434,7 +434,7 @@ Reading Time: <geschätzte Minuten>
 """
                 contents = [youtube_video, types.Part.from_text(text=prompt_text)]
                 generate_config = types.GenerateContentConfig(temperature=0, max_output_tokens=1024, response_modalities=["TEXT"])
-                response = self.genai_client.models.generate_content(model="gemini-2.5-flash", contents=contents, config=generate_config)
+                response = self.genai_client.models.generate_content(model="gemini-3-flash", contents=contents, config=generate_config)
                 text = response.text.strip()
                 summary_match = re.search(r"Summary:\s*(.+)", text, re.IGNORECASE)
                 reading_time_match = re.search(r"Reading\s*Time:\s*(\d+)", text, re.IGNORECASE)
