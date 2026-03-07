@@ -1,171 +1,122 @@
-# RSS Connector – Google Cloud Function
+# RSS Connector
 
-Modularer Microservice zur Synchronisation von RSS/Atom Feeds.  
-Ruft neue Artikel aus konfigurierten Feeds ab, extrahiert Metadaten und persistiert sie strukturiert in Firestore zur weiteren Verarbeitung (z. B. KI-Zusammenfassung, E-Mail-Pipeline).
+Dieses Projekt ist eine Google Cloud Function, die automatisiert RSS/Atom Feeds abruft, neue Artikel filtert, Metadaten extrahiert und die Links in einer Google Firestore Datenbank speichert.
 
-## Projektstruktur
+## Aufbau und Funktionen
 
-    functions/rss/
-    ├── main.py              # HTTP Entry-Point (Cloud Function)
-    ├── rss_service.py       # Geschäftslogik (RSSService)
-    ├── database.py          # Firestore-Zugriffsschicht
-    ├── config.py            # Feed-Konfiguration
-    ├── requirements.txt     # Python-Abhängigkeiten
-    ├── cloudbuild.yaml      # Build- & Deployment-Konfiguration
-    └── README.md            # Dokumentation
+Das Projekt ist modular aufgebaut und umfasst folgende Dateien:
 
-## Architektur & Kernfunktionen
+* **Config** (`config.py`): Zentrale Feed-Konfiguration. Jeder Feed definiert Name, URL, Crawl-Modus (`since_last_crawl` oder `time_window`), optionales Zeitfenster in Stunden und ETag-Support.
+* **Database** (`database.py`): Firestore-Anbindung – speichert extrahierte URLs in der Collection `website` (inkl. RSS-Metadaten) und verwaltet den Crawl-Status pro Feed in der Collection `rss_feeds_state`.
+* **RSSService** (`rss_service.py`): Geschäftslogik – holt Feeds mit `feedparser`, unterstützt Conditional GET (ETag/Last-Modified), filtert Einträge nach Modus, extrahiert Titel, Zusammenfassung und Veröffentlichungsdatum und übergibt Links an die Datenbank.
+* **rss_connector** (`main.py`): HTTP-Einstiegspunkt – koordiniert den gesamten Pipeline-Ablauf für alle konfigurierten Feeds.
 
-Der Service folgt dem gleichen Pattern wie der Mastodon Connector und ermöglicht die parallele Verarbeitung mehrerer RSS Feeds mit unterschiedlichen Crawl-Modi.
+### Crawl-Modi
 
-### 1. RSSService (rss_service.py)
+* **`since_last_crawl`**: Speichert das Datum des neuesten Artikels. Beim nächsten Lauf werden nur neuere Artikel geladen. Ideal für Feeds mit unregelmäßigen Updates (z. B. HackerNews).
+* **`time_window`**: Lädt alle Artikel innerhalb der letzten N Stunden, unabhängig vom letzten Crawl. Ideal für hochfrequente Feeds (z. B. TechCrunch).
 
-**Feed Processing:** Verarbeitet alle in `config.py` definierten Feeds sequenziell.
+## Systemvoraussetzungen (Requirements)
 
-**Dual-Mode Filtering:**
-- `since_last_crawl`: Lädt nur neue Artikel seit dem letzten Crawl (nutzt State-Tracking)
-- `time_window`: Lädt Artikel innerhalb eines definierten Zeitfensters (z. B. letzte 24h)
+* Python 3.11
+* `requirements.txt`:
+  * `firebase-admin==6.6.0`
+  * `functions-framework==3.9.2`
+  * `feedparser==6.0.11`
+  * `python-dotenv==1.0.1`
 
-**Conditional GET:** Unterstützt HTTP ETag und Last-Modified Header zur Bandbreitenoptimierung.
+Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale Tests benötigt:
+* `serviceAccountKey.json` (Firebase/GCP Service Account Key)
 
-**Metadata Extraction:** Extrahiert nicht nur URLs, sondern auch Titel (rss_title), Zusammenfassung (rss_summary) und Veröffentlichungsdatum (rss_published) aus den Feed-Einträgen.
+## Lokales Setup und Testen
 
-### 2. FirestoreRepository (database.py)
+1. Erstelle eine virtuelle Umgebung mit Python 3.11 im Root-Verzeichnis und aktiviere sie:
+   ```bash
+   python3.11 -m venv venv
+   source venv/bin/activate
+   ```
+2. Installiere die Abhängigkeiten:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Platziere die `serviceAccountKey.json` im Ordner `keys/`.
+4. Passe bei Bedarf die Feed-Konfiguration in `config.py` an:
+   ```python
+   RSS_FEEDS = [
+       {
+           "name": "my_feed",
+           "url": "https://example.com/feed.xml",
+           "mode": "since_last_crawl",
+           "time_window_hours": None,
+           "use_etag": True
+       }
+   ]
+   ```
+5. Starte den lokalen Server aus dem Hauptverzeichnis:
+   ```bash
+   functions-framework --target=rss_connector --debug
+   ```
+6. Löse die Funktion in einem zweiten Terminal-Fenster aus:
+   ```bash
+   curl http://localhost:8080
+   ```
 
-Bietet eine saubere Schnittstelle zur Firebase-Datenbank.
+## Deployment in die Google Cloud (GCP)
 
-Verwaltet zwei Collections:
-- **website**: Speichert die extrahierten URLs und deren Metadaten (analog zu Mastodon).
-- **rss_feeds_state**: Speichert den Status pro Feed (last_etag, last_modified, last_entry_date).
+1. Authentifiziere dich im Terminal:
+   ```bash
+   gcloud auth login
+   ```
+2. Verknüpfe das CLI mit deinem Google Cloud Projekt:
+   ```bash
+   gcloud config set project <PROJECT_ID>
+   ```
+3. Erstelle das Secret für die Zugangsdaten im Google Cloud Secret Manager:
+   ```bash
+   gcloud secrets create rss-firebase-key --replication-policy="automatic"
+   ```
+4. Lade die lokale Datei in das erstellte Secret hoch:
+   ```bash
+   gcloud secrets versions add rss-firebase-key --data-file="keys/serviceAccountKey.json"
+   ```
+5. Erteile dem Dienstkonto der Cloud Function die Berechtigung, das Secret auszulesen:
+   ```bash
+   gcloud secrets add-iam-policy-binding rss-firebase-key \
+     --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>" \
+     --role="roles/secretmanager.secretAccessor"
+   ```
+6. Führe den Deployment-Befehl aus dem Hauptverzeichnis aus. Das Secret wird dabei automatisch als Umgebungsvariable eingebunden:
+   ```bash
+   gcloud functions deploy rss_connector \
+     --gen2 \
+     --region=europe-west3 \
+     --source=. \
+     --entry-point=rss_connector \
+     --trigger-http \
+     --runtime=python311 \
+     --memory=1GiB \
+     --timeout=540s \
+     --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest \
+     --set-env-vars=LOG_LEVEL=INFO
+   ```
 
-### 3. Config (config.py)
+## Automatisierung mit Cloud Scheduler
 
-Zentrale Konfiguration aller RSS Feeds mit folgenden Parametern pro Feed:
-- `name`: Feed-Identifier (wird als `source` in Firestore gespeichert)
-- `url`: Feed-URL
-- `mode`: Crawl-Modus (`since_last_crawl` oder `time_window`)
-- `time_window_hours`: Zeitfenster in Stunden (nur für `time_window` Mode)
-- `use_etag`: Boolean für ETag-Support
+Um die Cloud Function automatisch um 07:00 und 15:00 Uhr deutscher Zeit auszuführen, wird ein Cloud Scheduler Job eingerichtet.
 
-### 4. Entry-Point (main.py)
-
-Verwendet das functions-framework, um die Logik als HTTP-Trigger bereitzustellen.
-
-Nimmt Anfragen entgegen und stößt den Synchronisationsprozess für alle konfigurierten Feeds an.
-
-## Setup & Deployment
-
-### Lokale Vorbereitung
-
-Installiere die notwendigen Bibliotheken für die Entwicklung:
-
-    cd functions/rss
-    pip install -r requirements.txt
-
-### Feed-Konfiguration
-
-Bearbeite `config.py` um neue RSS Feeds hinzuzufügen:
-
-    RSS_FEEDS = [
-        {
-            "name": "my_feed",
-            "url": "https://example.com/feed.xml",
-            "mode": "since_last_crawl",
-            "use_etag": True
-        }
-    ]
-
-### Deployment zur Google Cloud
-
-Das Deployment wird über Google Cloud Build gesteuert. Der RSS Connector wird automatisch deployed, wenn die Master-Build-Datei ausgeführt wird:
-
-    # Aus dem Projekt-Root
-    gcloud builds submit . --config functions/cloudbuild.yaml
-
-Alternativ kann der RSS Connector einzeln deployed werden:
-
-    cd functions/rss
-    gcloud builds submit . --config cloudbuild.yaml --substitutions=_PROJECT_ID=[DEINE_PROJECT_ID]
-
-## Konfiguration (Secrets & Umgebungsvariablen)
-
-Der Service benötigt Zugriff auf folgende Ressourcen in GCP:
-
-**Secrets:**
-- `rss-firebase-key`: Enthält die Service-Account-Informationen für Firestore.
-
-**Umgebungsvariablen:**
-- `PROJECT_ID`: Google Cloud Projekt-ID
-- `LOG_LEVEL`: Legt die Log-Ausführlichkeit fest (z. B. `DEBUG`, `INFO`)
-
-## Crawl-Modi im Detail
-
-### Mode: since_last_crawl
-
-Konfiguration:
-
-    {
-        "mode": "since_last_crawl",
-        "use_etag": True
-    }
-
-**Verhalten:**
-- Speichert Datum des neuesten Artikels im Feed
-- Beim nächsten Crawl: Lädt nur Artikel, die neuer sind als das gespeicherte Datum
-- Ideal für Feeds mit unregelmäßigen Updates
-- Nutzt ETag wenn verfügbar (verhindert unnötige Downloads)
-
-**Beispiel:** HackerNews RSS Feed (Updates mehrmals täglich, aber unregelmäßig)
-
-### Mode: time_window
-
-Konfiguration:
-
-    {
-        "mode": "time_window",
-        "time_window_hours": 24,
-        "use_etag": False
-    }
-
-**Verhalten:**
-- Lädt alle Artikel innerhalb der letzten N Stunden
-- Ignoriert vorherigen Crawl-Status
-- Ideal für hochfrequente Feeds oder wenn Vollständigkeit wichtiger ist als Effizienz
-
-**Beispiel:** TechCrunch Feed (konstanter Artikel-Flow, will keine verpassen)
-
-## Integration mit anderen Services
-
-### Workflow im Gesamtsystem:
-
-1. **RSS Connector** (diese Function) → Schreibt URLs in Firestore Collection `website`
-2. **Sendmail Function** → Liest `website`, generiert KI-Summaries, versendet E-Mail
-3. **Alerts Function** → Parallel: Verarbeitet Google Alerts
-
-**Wichtig:** RSS Connector speichert URLs mit `source: "feed_name"`, analog zu Mastodon (`source: "mastodon"`). Die Sendmail Function erkennt automatisch alle Quellen und verarbeitet sie einheitlich.
-
-## Monitoring & Logs
-
-Logs können in der Google Cloud Console eingesehen werden:
-
-    gcloud functions logs read rss_connector --region=europe-west3
-
-**Wichtige Log-Meldungen:**
-- `Starting RSS Connector - processing N feeds`
-- `Processing feed: [name] (mode: [mode], etag: [bool])`
-- `Feed [name]: N new entries to process`
-- `RSS Connector completed in X.XXs - N new links saved`
-
-## Troubleshooting
-
-**Problem:** Feed wird nicht abgerufen (0 neue Einträge)
-
-**Lösung:** Prüfe ob Feed ETag-Support hat aber `use_etag: False` gesetzt ist, oder ob das gespeicherte Datum in `rss_feeds_state` aktuell ist.
-
-**Problem:** Doppelte URLs
-
-**Lösung:** Firestore Document-IDs sind URL-basiert (via `safe_url()`). Duplikate werden automatisch übersprungen.
-
-**Problem:** Memory-Fehler bei großen Feeds
-
-**Lösung:** Erhöhe Memory in `cloudbuild.yaml` (aktuell 1GiB, kann auf 2GiB erhöht werden).
+1. Erteile dem Dienstkonto die Berechtigung, die Cloud Function (Gen 2) aufzurufen:
+   ```bash
+   gcloud functions add-invoker-policy-binding rss_connector \
+     --region=europe-west3 \
+     --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>"
+   ```
+2. Erstelle den Scheduler-Job:
+   ```bash
+   gcloud scheduler jobs create http rss-scheduler \
+     --schedule="0 7,15 * * *" \
+     --time-zone="Europe/Berlin" \
+     --uri="<CLOUD_FUNCTION_URL>" \
+     --http-method=GET \
+     --oidc-service-account-email="<SERVICE_ACCOUNT_EMAIL>" \
+     --location=europe-west3
+   ```

@@ -4,8 +4,8 @@ Firestore Repository für RSS Connector
 
 import os
 import logging
-import re
-from datetime import datetime
+import hashlib
+from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs, unquote
 from dotenv import load_dotenv
 import firebase_admin
@@ -28,10 +28,10 @@ def initialize_firebase():
             logger.info("Cloud environment: Using Application Default Credentials")
             initialize_app()
         else:
-            SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
-            if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-                logger.info(f"Local environment: Using {SERVICE_ACCOUNT_KEY_PATH}")
-                cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
+            key_path = os.getenv("SERVICE_ACCOUNT_KEY_PATH", "keys/serviceAccountKey.json")
+            if os.path.exists(key_path):
+                logger.info(f"Local environment: Using {key_path}")
+                cred = credentials.Certificate(key_path)
                 initialize_app(cred)
             else:
                 logger.error("No credentials found (neither cloud nor local file)")
@@ -43,22 +43,16 @@ def initialize_firebase():
 def safe_url(url: str) -> str:
     """
     Convert URL to Firestore-safe document ID
-    Removes special characters, replaces with hyphens
+    Uses SHA-256 hash to avoid collisions from character stripping
     """
     parsed = urlparse(url)
     qs = parse_qs(parsed.query)
     target = qs.get("url")
     if target:
         url = unquote(target[0])
-    else:
-        url = url
     
     url = url.strip()
-    url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
-    url = re.sub(r"-+", "-", url)
-    url = url.strip("-")
-    
-    return url
+    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:40]
 
 
 class FirestoreRepository:
@@ -75,7 +69,7 @@ class FirestoreRepository:
         rss_title: str = None,
         rss_summary: str = None,
         rss_published: str = None
-    ):
+    ) -> bool:
         """
         Save new URL from RSS feed to Firestore
         
@@ -85,6 +79,9 @@ class FirestoreRepository:
             rss_title: RSS item title
             rss_summary: RSS item summary/description
             rss_published: RSS item publish date
+            
+        Returns:
+            True if URL was newly saved, False if it already existed
         """
         doc_ref = self.db.collection("website").document(safe_url(url))
         doc = doc_ref.get()
@@ -94,7 +91,7 @@ class FirestoreRepository:
                 "url": url,
                 "processed": False,
                 "mail_sent": False,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
+                "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f"),
                 "source": feed_name
             }
             
@@ -108,8 +105,10 @@ class FirestoreRepository:
             
             doc_ref.set(data)
             logger.info(f"New URL saved: {url} (source: {feed_name})")
+            return True
         else:
             logger.debug(f"URL already exists (skipped): {url}")
+            return False
     
     def get_feed_state(self, feed_name: str) -> dict:
         """
@@ -146,7 +145,7 @@ class FirestoreRepository:
         
         data = {
             "feed_name": feed_name,
-            "last_crawl": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+            "last_crawl": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f")
         }
         
         if etag:
@@ -156,5 +155,5 @@ class FirestoreRepository:
         if last_entry_date:
             data["last_entry_date"] = last_entry_date.strftime("%Y-%m-%d %H:%M:%S.%f")
         
-        doc_ref.set(data)
+        doc_ref.set(data, merge=True)
         logger.info(f"Feed state updated: {feed_name}")

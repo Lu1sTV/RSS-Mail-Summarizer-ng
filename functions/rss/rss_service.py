@@ -4,7 +4,7 @@ RSS Service - Handles RSS feed fetching and processing
 
 import time
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import feedparser
 from config import Config
 from database import FirestoreRepository, logger
@@ -73,8 +73,13 @@ class RSSService:
             feed = feedparser.parse(feed_url)
         
         # Check if feed was modified (304 Not Modified)
-        if feed.status == 304:
+        status = getattr(feed, 'status', None)
+        if status == 304:
             logger.info(f"Feed {feed_name} not modified (304)")
+            return 0
+        
+        if status and status >= 400:
+            logger.error(f"Feed {feed_name} returned HTTP {status}")
             return 0
         
         if feed.bozo:
@@ -97,13 +102,16 @@ class RSSService:
         new_links_count = self._extract_and_store_links(filtered_entries, feed_name)
         
         # Update feed state
-        new_etag = feed.headers.get("etag")
-        new_last_modified = feed.headers.get("last-modified")
+        headers = getattr(feed, 'headers', {})
+        new_etag = headers.get("etag") if isinstance(headers, dict) else None
+        new_last_modified = headers.get("last-modified") if isinstance(headers, dict) else None
         
-        # Get most recent entry date
+        # Get most recent entry date (don't assume feed is sorted)
         latest_entry_date = None
         if filtered_entries:
-            latest_entry_date = self._parse_entry_date(filtered_entries[0])
+            parsed_dates = [self._parse_entry_date(e) for e in filtered_entries]
+            valid_dates = [d for d in parsed_dates if d is not None]
+            latest_entry_date = max(valid_dates) if valid_dates else None
         
         self.repo.update_feed_state(
             feed_name=feed_name,
@@ -149,6 +157,7 @@ class RSSService:
         try:
             last_entry_date_str = state["last_entry_date"]
             last_entry_date = datetime.strptime(last_entry_date_str, "%Y-%m-%d %H:%M:%S.%f")
+            last_entry_date = last_entry_date.replace(tzinfo=timezone.utc)
         except Exception as e:
             logger.warning(f"Could not parse last_entry_date: {e}, returning all entries")
             return entries
@@ -165,7 +174,7 @@ class RSSService:
         """
         Filter entries published within last N hours
         """
-        cutoff_date = datetime.now() - timedelta(hours=hours)
+        cutoff_date = datetime.now(timezone.utc) - timedelta(hours=hours)
         
         filtered = []
         for entry in entries:
@@ -187,7 +196,7 @@ class RSSService:
             if hasattr(entry, field) and getattr(entry, field):
                 time_tuple = getattr(entry, field)
                 try:
-                    return datetime(*time_tuple[:6])
+                    return datetime(*time_tuple[:6], tzinfo=timezone.utc)
                 except Exception:
                     pass
         
@@ -233,7 +242,7 @@ class RSSService:
                 published = entry_date.strftime("%Y-%m-%d %H:%M:%S")
             
             # Store in Firestore
-            self.repo.add_url_to_website_collection(
+            was_new = self.repo.add_url_to_website_collection(
                 url=url,
                 feed_name=feed_name,
                 rss_title=title,
@@ -241,6 +250,7 @@ class RSSService:
                 rss_published=published
             )
             
-            new_links += 1
+            if was_new:
+                new_links += 1
         
         return new_links

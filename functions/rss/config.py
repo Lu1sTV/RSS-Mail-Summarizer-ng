@@ -20,8 +20,5 @@ class Config:
         }
     ]
     
-    # Firebase/Firestore
-    PROJECT_ID = os.environ.get('PROJECT_ID', 'mail-summerizer-486619')
-    
     # Logging
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO')
