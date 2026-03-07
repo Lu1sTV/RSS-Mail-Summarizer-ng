@@ -47,6 +47,7 @@ class FirestoreDatabase:
         try:
             doc_id: str = url.replace("https://", "").replace("http://", "").replace("/", "-")[:250]
             self.db.collection("website").document(doc_id).set({
+                "mail_sent": False,
                 "url": url,
                 "category": category,
                 "alert": True,
