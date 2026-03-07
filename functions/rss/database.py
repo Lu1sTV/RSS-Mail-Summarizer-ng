@@ -91,6 +91,7 @@ class FirestoreRepository:
                 "url": url,
                 "processed": False,
                 "mail_sent": False,
+                "podcast_generated": False,
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f"),
                 "source": feed_name
             }
