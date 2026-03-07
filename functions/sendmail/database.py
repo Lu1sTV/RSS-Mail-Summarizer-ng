@@ -1,10 +1,7 @@
 """
-Dieses Modul enthält alle Funktionen, die Artikel in die Datenbank schreiben oder diese abrufen.
-Hier wird die Verbindung zu Firestore hergestellt und die Speicherung,
-Verarbeitung und der Abruf von Website- und Alert-Daten verwaltet.
-Es enthält Funktionen zum Hinzufügen neuer Links, Speichern von Zusammenfassungen,
-Abrufen ungesendeter Artikel, Markieren als gesendet sowie Hilfsfunktionen wie
-das Erkennen von Duplikaten und Unterscheidung zwischen normalen und Alert-Links.
+Datenbankzugriff für die eigenständige `sendmail`-Function.
+Die Originalfunktionen aus dem Hauptprojekt wurden hierher kopiert,
+um die Abhängigkeit zum `rss_mail_summarizer` Paket zu eliminieren.
 """
 
 # package imports
@@ -16,31 +13,37 @@ import firebase_admin
 from urllib.parse import urlparse, parse_qs, unquote
 import re
 from datetime import datetime
-from utils.logger import logger
+
+# lokaler Logger
+import logging
+
+# einfacher Logger für dieses Modul
+default_logger = logging.getLogger(__name__)
 
 load_dotenv()
 SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
+
 
 def get_firebase_credentials():
     secret_env = "RSS_FIREBASE_KEY"
 
     if secret_env in os.environ:
-        logger.info("Firebase-Service-Account wird aus Umgebungsvariable geladen.")
+        default_logger.info("Firebase-Service-Account wird aus Umgebungsvariable geladen.")
         try:
             service_account_info = json.loads(os.environ[secret_env])
             return credentials.Certificate(service_account_info)
         except Exception as e:
-            logger.error(f"Fehler beim Laden des Secrets aus der Umgebungsvariable: {e}")
+            default_logger.error(f"Fehler beim Laden des Secrets aus der Umgebungsvariable: {e}")
             raise
     else:
-        logger.warning(
+        default_logger.warning(
             f"Umgebungsvariable {secret_env} nicht gefunden – "
             f"verwende lokale Datei {SERVICE_ACCOUNT_KEY_PATH}."
         )
         try:
             return credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
         except Exception as e:
-            logger.error(f"Konnte lokale Datei {SERVICE_ACCOUNT_KEY_PATH} nicht laden: {e}")
+            default_logger.error(f"Konnte lokale Datei {SERVICE_ACCOUNT_KEY_PATH} nicht laden: {e}")
             raise
 
 
@@ -48,10 +51,9 @@ def initialize_firebase():
     if not firebase_admin._apps:
         cred = get_firebase_credentials()
         initialize_app(cred)
-        logger.info("Firebase erfolgreich initialisiert.")
+        default_logger.info("Firebase erfolgreich initialisiert.")
     else:
-        logger.debug("Firebase war bereits initialisiert – überspringe.")
-
+        default_logger.debug("Firebase war bereits initialisiert – überspringe.")
 
 
 initialize_firebase()
@@ -59,6 +61,8 @@ initialize_firebase()
 # Firestore-Client wird erstellt
 db = firestore.client()
 
+
+# Die folgenden Funktionen sind identisch zu denen im Hauptrepo
 
 def safe_url(google_url: str) -> str:
     """Extrahiert echte URL aus Google Redirect und macht sie Firestore-kompatibel."""
@@ -79,6 +83,7 @@ def safe_url(google_url: str) -> str:
 
 
 # Fügt Einträge in die Datenbank ein oder aktualisiert bestehende Einträge
+
 def add_datarecord(url, category=None, summary=None, reading_time=None, subcategory=None,
                    mail_sent=False, hn_points=None, processed=None):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
@@ -103,22 +108,24 @@ def add_datarecord(url, category=None, summary=None, reading_time=None, subcateg
         update_data["processed"] = processed
 
     db.collection("website").document(safe_url(url)).set(update_data, merge=True)
-    logger.info(f"Datensatz aktualisiert: {url}")
+    default_logger.info(f"Datensatz aktualisiert: {url}")
 
 
 # Prüft, ob eine URL bereits in der Datenbank existiert
+
 def is_duplicate_url(url):
     doc = db.collection("website").document(safe_url(url)).get()
     return doc.exists
 
 
 # Holt alle Artikel, die noch nicht per Mail gesendet wurden
+
 def get_unsent_entries():
-    logger.info("Lade Einträge aus Firestore mit mail_sent=False ...")
+    default_logger.info("Lade Einträge aus Firestore mit mail_sent=False ...")
     try:
         query = db.collection("website").where("mail_sent", "==", False).stream()
     except Exception as e:
-        logger.error(f"Fehler beim Abrufen der Einträge: {e}")
+        default_logger.error(f"Fehler beim Abrufen der Einträge: {e}")
         return []
 
     entries = []
@@ -127,7 +134,7 @@ def get_unsent_entries():
         url = data.get("url")
 
         if not url or not isinstance(url, str):
-            logger.warning(f"Überspringe Eintrag ohne gültige URL: {data}")
+            default_logger.warning(f"Überspringe Eintrag ohne gültige URL: {data}")
             continue
 
         entry = {
@@ -141,24 +148,28 @@ def get_unsent_entries():
             "timestamp": data.get("timestamp"),
         }
         entries.append(entry)
-        logger.debug(f"Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
+        default_logger.debug(f"Hinzugefügt: {entry['url']} (Kategorie: {entry['category']}, Subkategorie: {entry['subcategory']})")
 
     return entries
 
 
 # Markiert eine übergebene Liste von Artikeln in der Datenbank als gesendet
+
 def mark_as_sent(entries):
     for entry in entries:
         url = entry.get("url")
         if not url:
-            logger.warning(f"Kein URL-Feld für Eintrag: {entry}")
+            default_logger.warning(f"Kein URL-Feld für Eintrag: {entry}")
             continue
         db.collection("website").document(safe_url(url)).update({"mail_sent": True})
 
     # logger.info(f"{len(entries)} Einträge wurden als gesendet markiert.")
 
 
+# Weitere Hilfsfunktionen aus dem alten Modul, damit die Schnittstelle wieder identisch ist
+
 # Fügt eine neue unverarbeitete URL in die Datenbank ein
+
 def add_url_to_website_collection(url):
     doc_ref = db.collection("website").document(safe_url(url))
     doc = doc_ref.get()
@@ -170,12 +181,13 @@ def add_url_to_website_collection(url):
                 "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             }
         )
-        logger.info(f"Neue URL gespeichert: {url}")
+        default_logger.info(f"Neue URL gespeichert: {url}")
     else:
-        logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
+        default_logger.debug(f"URL bereits vorhanden (wird ignoriert): {url}")
 
 
 # Fügt oder aktualisiert eine Alert-URL mit Kategorie in der Datenbank
+
 def add_alert_to_website_collection(url, category):
     doc_ref = db.collection("website").document(safe_url(url))
     update_data = {
@@ -183,13 +195,14 @@ def add_alert_to_website_collection(url, category):
         "alert": True,
         "category": category,
         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
-        "processed": False
+        "processed": False,
     }
     doc_ref.set(update_data, merge=True)
-    logger.info(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
+    default_logger.info(f"URL gespeichert/aktualisiert: {url} (Kategorie: {category})")
 
 
 # Holt alle unverarbeiteten URLs (inkl. Info ob es sich um Alerts handelt)
+
 def get_unprocessed_urls():
     urls = []
     for doc in db.collection("website").where("processed", "==", False).stream():
@@ -204,6 +217,7 @@ def get_unprocessed_urls():
 
 
 # Prüft, ob eine bestimmte URL als Alert markiert ist
+
 def is_alert(url):
     doc_ref = db.collection("website").document(safe_url(url)).get()
     if doc_ref.exists:
@@ -212,7 +226,8 @@ def is_alert(url):
     return False
 
 
-# Holt die höchste Toot-ID aus Firestore
+# Hilfsfunktionen für Mastodon (aus altem Repository)
+
 def get_last_toot_id():
     docs = (
         db.collection("mastodon_toots")
@@ -227,12 +242,10 @@ def get_last_toot_id():
     return None
 
 
-# Speichert die aktuellste Toot-ID in Firestore
 def save_last_toot_id(toot_id: int):
     data = {
         "toot_id": int(toot_id),
-        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
     }
     db.collection("mastodon_toots").add(data)
-    logger.info(f"Neue Toot-ID gespeichert: {toot_id}")
-
+    default_logger.info(f"Neue Toot-ID gespeichert: {toot_id}")

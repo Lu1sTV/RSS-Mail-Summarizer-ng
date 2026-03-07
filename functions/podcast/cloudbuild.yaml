@@ -1,0 +1,19 @@
+steps:
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    args:
+      - gcloud
+      - functions
+      - deploy
+      - podcast-generator
+      - --gen2
+      - --region=europe-west3
+      - --source=.
+      - --entry-point=podcast_trigger
+      - --trigger-http
+      - --runtime=python311
+      - --memory=4GiB
+      - --timeout=600s
+      - --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest
+
+options:
+  logging: CLOUD_LOGGING_ONLY

@@ -1,0 +1,9 @@
+.git
+.gitignore
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+test/
+README.md
+keys/

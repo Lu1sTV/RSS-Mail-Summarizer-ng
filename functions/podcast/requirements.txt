@@ -1,0 +1,7 @@
+functions-framework==3.9.2
+firebase-admin>=6.0.0
+google-cloud-texttospeech>=2.0.0
+google-cloud-storage>=2.0.0
+google-genai>=0.3.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0

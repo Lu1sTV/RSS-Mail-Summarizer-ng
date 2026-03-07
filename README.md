@@ -102,7 +102,7 @@ gcloud secrets add-iam-policy-binding rss-firebase-key \
 Damit auch in die Collection geschrieben werden kann, muss folgende Rolle auch vergeben werden:
 
 ```bash
-gcloud secrets add-iam-policy-binding rss-firebase-key \
+gcloud projects add-iam-policy-binding $PROJECT_ID \
   --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
   --role="roles/datastore.user"
 ```

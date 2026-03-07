@@ -1,0 +1,16 @@
+# core functionality
+firebase-admin==6.6.0
+functions-framework==3.9.2
+
+google-api-python-client>=2.100.0
+# langchain + Vertex AI
+langchain-core==0.3.40
+langchain-google-genai==2.0.9
+google-genai==1.36.0
+
+# GCP secrets
+google-cloud-secret-manager
+
+# supporting libraries
+Markdown==3.7
+python-dotenv==1.0.1
