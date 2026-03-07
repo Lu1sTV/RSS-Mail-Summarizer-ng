@@ -3,8 +3,8 @@ Firestore Repository für RSS Connector
 """
 
 import os
+import re
 import logging
-import hashlib
 from datetime import datetime, timezone
 from urllib.parse import urlparse, parse_qs, unquote
 from dotenv import load_dotenv
@@ -41,18 +41,19 @@ def initialize_firebase():
 
 
 def safe_url(url: str) -> str:
-    """
-    Convert URL to Firestore-safe document ID
-    Uses SHA-256 hash to avoid collisions from character stripping
-    """
+    """Extrahiert echte URL aus Google Redirect und macht sie Firestore-kompatibel."""
     parsed = urlparse(url)
     qs = parse_qs(parsed.query)
     target = qs.get("url")
     if target:
         url = unquote(target[0])
-    
+
     url = url.strip()
-    return hashlib.sha256(url.encode("utf-8")).hexdigest()[:40]
+    url = re.sub(r"[^a-zA-Z0-9_-]", "-", url)
+    url = re.sub(r"-+", "-", url)
+    url = url.strip("-")
+
+    return url
 
 
 class FirestoreRepository:
@@ -66,19 +67,13 @@ class FirestoreRepository:
         self, 
         url: str, 
         feed_name: str,
-        rss_title: str = None,
-        rss_summary: str = None,
-        rss_published: str = None
     ) -> bool:
         """
         Save new URL from RSS feed to Firestore
         
         Args:
             url: Article URL
-            feed_name: Name of RSS feed (goes to 'source' field)
-            rss_title: RSS item title
-            rss_summary: RSS item summary/description
-            rss_published: RSS item publish date
+            feed_name: Name of RSS feed (goes to 'feed' field)
             
         Returns:
             True if URL was newly saved, False if it already existed
@@ -89,23 +84,18 @@ class FirestoreRepository:
         if not doc.exists:
             data = {
                 "url": url,
+                "source": "rss",
+                "feed": feed_name,
                 "processed": False,
                 "mail_sent": False,
                 "podcast_generated": False,
-                "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S.%f"),
-                "source": feed_name
+                "time_stamp": datetime.now(timezone.utc),
+                "category": "",
+                "sub_category": "",
             }
             
-            # Add optional RSS metadata
-            if rss_title:
-                data["rss_title"] = rss_title
-            if rss_summary:
-                data["rss_summary"] = rss_summary
-            if rss_published:
-                data["rss_published"] = rss_published
-            
             doc_ref.set(data)
-            logger.info(f"New URL saved: {url} (source: {feed_name})")
+            logger.info(f"New URL saved: {url} (feed: {feed_name})")
             return True
         else:
             logger.debug(f"URL already exists (skipped): {url}")

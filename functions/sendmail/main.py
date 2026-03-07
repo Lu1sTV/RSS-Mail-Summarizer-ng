@@ -114,7 +114,7 @@ class SendMailService:
                     url=url,
                     category=meta.get("category"),
                     summary=meta.get("summary"),
-                    subcategory=meta.get("subcategory", None),
+                    sub_category=meta.get("sub_category", None),
                     reading_time=meta.get("reading_time"),
                     hn_points=meta.get("hn_points"),
                     mail_sent=False,
@@ -128,11 +128,11 @@ class SendMailService:
         summaries_from_db = {
             entry["url"]: {
                 "category": entry.get("category"),
-                "subcategory": entry.get("subcategory"),
+                "sub_category": entry.get("sub_category"),
                 "summary": entry.get("summary"),
                 "reading_time": entry.get("reading_time"),
                 "hn_points": entry.get("hn_points"),
-                "alert": entry.get("alert", False),
+                "source": entry.get("source", ""),
             }
             for entry in unsent
         }

@@ -232,22 +232,10 @@ class RSSService:
                 logger.warning(f"Entry has no link field: {entry.get('title', 'Unknown')}")
                 continue
             
-            # Extract metadata
-            title = entry.get("title", "")
-            summary = entry.get("summary", "") or entry.get("description", "")
-            published = None
-            
-            entry_date = self._parse_entry_date(entry)
-            if entry_date:
-                published = entry_date.strftime("%Y-%m-%d %H:%M:%S")
-            
             # Store in Firestore
             was_new = self.repo.add_url_to_website_collection(
                 url=url,
                 feed_name=feed_name,
-                rss_title=title,
-                rss_summary=summary,
-                rss_published=published
             )
             
             if was_new:

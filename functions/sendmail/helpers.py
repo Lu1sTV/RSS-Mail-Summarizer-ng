@@ -132,13 +132,13 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
     for url, details in summaries_and_categories.items():
         logger.debug("Verarbeite Artikel: %s", url)
         category = details.get("category") or "Uncategorized"
-        subcategory = details.get("subcategory") or "No Subcategory"
+        subcategory = details.get("sub_category") or "No Subcategory"
         summary = details.get("summary")
         if not summary or str(summary).strip().lower() in ["n/a", "none", "null"]:
             summary = "(keine Zusammenfassung verfügbar)"
         reading_time = details.get("reading_time")
         hn_points = details.get("hn_points")
-        is_alert = details.get("alert", False)
+        is_alert = details.get("source") == "alerts"
         reading_time_text = (f"read in {reading_time} min" if reading_time else "read time n/a")
         if category not in categorized_entries:
             categorized_entries[category] = {}
@@ -297,7 +297,7 @@ class AIService:
                     "category": category,
                     "topics": topics,
                     "reading_time": reading_time,
-                    "subcategory": None,
+                    "sub_category": None,
                 }
                 logger.debug(f"Eintrag für URL {url} mit Kategorie '{category}' verarbeitet.")
 
@@ -309,8 +309,8 @@ class AIService:
             if len(urls) >= 3:
                 logger.info(f"Subkategorie '{topic}' für {len(urls)} URLs zugewiesen.")
                 for url in urls:
-                    if results[url]["subcategory"] is None:
-                        results[url]["subcategory"] = topic
+                    if results[url]["sub_category"] is None:
+                        results[url]["sub_category"] = topic
 
         return results
 

@@ -77,26 +77,27 @@ class FirestoreDatabase:
                 if data.get("podcast_generated", False):
                     continue
                 if PodcastConfig.SOURCES["mastodon"] != ["*"]:
-                    pass  # Future: filter by specific accounts
+                    if data.get("feed") not in PodcastConfig.SOURCES["mastodon"]:
+                        continue
                 candidates.append((doc.reference, data))
             logger.info(f"Mastodon: {len(candidates)} candidates.")
 
         # Alerts
         if PodcastConfig.SOURCES.get("alerts"):
             count_before: int = len(candidates)
-            logger.info("Querying alert=true...")
-            query = self.db.collection("website").where("alert", "==", True).stream()
+            logger.info("Querying source=alerts...")
+            query = self.db.collection("website").where("source", "==", "alerts").stream()
             for doc in query:
                 data: Dict[str, Any] = doc.to_dict()
                 if data.get("podcast_generated", False):
                     continue
                 if PodcastConfig.SOURCES["alerts"] != ["*"]:
-                    if data.get("category") not in PodcastConfig.SOURCES["alerts"]:
+                    if data.get("feed") not in PodcastConfig.SOURCES["alerts"]:
                         continue
                 candidates.append((doc.reference, data))
             logger.info(f"Alerts: {len(candidates) - count_before} candidates.")
 
-        # RSS (placeholder)
+        # RSS
         if PodcastConfig.SOURCES.get("rss"):
             count_before: int = len(candidates)
             logger.info("Querying source=rss...")
@@ -105,6 +106,9 @@ class FirestoreDatabase:
                 data: Dict[str, Any] = doc.to_dict()
                 if data.get("podcast_generated", False):
                     continue
+                if PodcastConfig.SOURCES["rss"] != ["*"]:
+                    if data.get("feed") not in PodcastConfig.SOURCES["rss"]:
+                        continue
                 candidates.append((doc.reference, data))
             logger.info(f"RSS: {len(candidates) - count_before} candidates.")
 
@@ -122,7 +126,7 @@ class FirestoreDatabase:
             cutoff: datetime = datetime.now(timezone.utc) - timedelta(hours=PodcastConfig.TIME_WINDOW_HOURS)
             filtered: List[Tuple[Any, Dict[str, Any]]] = []
             for ref, data in candidates:
-                ts: Optional[datetime] = self._parse_timestamp(data.get("timestamp"))
+                ts: Optional[datetime] = self._parse_timestamp(data.get("time_stamp"))
                 if ts is None or ts >= cutoff:
                     filtered.append((ref, data))
             logger.info(f"Time filter ({PodcastConfig.TIME_WINDOW_HOURS}h): {len(candidates)} -> {len(filtered)}.")
@@ -130,7 +134,7 @@ class FirestoreDatabase:
 
         # Sort newest first
         candidates.sort(
-            key=lambda x: self._parse_timestamp(x[1].get("timestamp")) or datetime.min.replace(tzinfo=timezone.utc),
+            key=lambda x: self._parse_timestamp(x[1].get("time_stamp")) or datetime.min.replace(tzinfo=timezone.utc),
             reverse=True
         )
 
