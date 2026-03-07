@@ -4,13 +4,13 @@ Dieses Projekt ist eine Google Cloud Function, die automatisiert E-Mails mit Goo
 
 ## Aufbau und Funktionen
 
-Das Skript (`main.py`) ist objektorientiert aufgebaut und umfasst folgende Kernkomponenten:
+Das Projekt ist modular aufgebaut und umfasst folgende Dateien:
 
-* **Config**: Enthält statische Konfigurationsdaten wie Label-Namen, Blacklists für URLs und API-Scopes.
-* **FirestoreDatabase**: Initialisiert die Verbindung zu Firebase/Firestore und speichert die validierten URLs in der Collection `website`.
-* **GmailService**: Verwaltet die Authentifizierung mit der Gmail-API, ruft E-Mails ab, extrahiert den HTML-Body und verschiebt verarbeitete E-Mails in ein neues Label. Unterstützt die lokale `token.json` sowie den Abruf über den Google Cloud Secret Manager.
-* **AlertProcessor**: Koordiniert den Ablauf. Parst das HTML mit BeautifulSoup, bereinigt Google-Weiterleitungs-URLs, prüft gegen die Blacklist und übergibt gültige Links an die Datenbank.
-* **alerts_mvp_endpoint**: Der HTTP-Einstiegspunkt für das Functions Framework, der bei Aufruf der Cloud Function ausgeführt wird.
+* **Config (`config.py`)**: Alert-Label-Definitionen, URL-Blacklist, Gmail-Scopes, max. Nachrichten pro Abruf (`MAX_RESULTS`) und optionales Max-Alter in Tagen (`MAX_AGE_DAYS`).
+* **Database (`database.py`)**: Firestore-Anbindung – speichert extrahierte URLs in der Collection `website` (inkl. `podcast_generated=False`).
+* **GmailService (`main.py`)**: Gmail-API-Client – liest Mails per Label, extrahiert HTML-Body, verschiebt verarbeitete Mails. Respektiert `MAX_RESULTS` und `MAX_AGE_DAYS` aus der Config.
+* **AlertProcessor (`main.py`)**: Parst HTML mit BeautifulSoup, bereinigt Google-Redirect-URLs, prüft gegen Blacklist und übergibt Links an die Datenbank.
+* **alerts_mvp_endpoint (`main.py`)**: HTTP-Einstiegspunkt – koordiniert den gesamten Pipeline-Ablauf.
 
 ## Systemvoraussetzungen (Requirements)
 
