@@ -1,5 +1,6 @@
 steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    dir: 'functions/mastodon'
     args:
       - gcloud
       - functions
