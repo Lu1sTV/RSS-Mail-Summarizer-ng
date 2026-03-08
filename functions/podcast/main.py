@@ -1,9 +1,14 @@
 import os
 import sys
 import json
+import base64
 import logging
 import traceback
 import requests
+from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email import encoders
 from bs4 import BeautifulSoup
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
@@ -12,6 +17,8 @@ from urllib.parse import urlparse, parse_qs
 import functions_framework
 from google.cloud import texttospeech, storage
 from google.oauth2 import service_account
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
 
 from google import genai
 from google.genai import types
@@ -48,6 +55,42 @@ class GCPAuthService:
         if not key:
             raise RuntimeError("GEMINI_API_KEY environment variable is missing.")
         return key.strip()
+
+    @staticmethod
+    def get_gmail_service() -> Any:
+        """Build Gmail API service from token secret or local token file."""
+        scopes = ["https://www.googleapis.com/auth/gmail.modify"]
+        token_json_str: Optional[str] = os.environ.get("CREDENTIALS_TOKEN_JSON")
+        creds: Optional[Credentials] = None
+
+        if token_json_str:
+            try:
+                creds_info = json.loads(token_json_str)
+                creds = Credentials.from_authorized_user_info(creds_info, scopes)
+            except Exception as exc:
+                logger.error(f"Invalid CREDENTIALS_TOKEN_JSON: {exc}")
+
+        if creds is None:
+            local_token_paths = [
+                os.path.join(os.path.dirname(__file__), "keys", "token.json"),
+                os.path.join(os.path.dirname(__file__), "..", "..", "keys", "token.json"),
+            ]
+            for token_path in local_token_paths:
+                if os.path.exists(token_path):
+                    creds = Credentials.from_authorized_user_file(token_path, scopes)
+                    break
+
+        if not creds:
+            raise RuntimeError("No Gmail token found. Set CREDENTIALS_TOKEN_JSON or provide keys/token.json.")
+
+        if not creds.valid:
+            if creds.expired and creds.refresh_token:
+                from google.auth.transport.requests import Request
+                creds.refresh(Request())
+            else:
+                raise RuntimeError("Gmail token is invalid and cannot be refreshed.")
+
+        return build("gmail", "v1", credentials=creds)
 
 
 class PodcastAIService:
@@ -199,6 +242,41 @@ class AudioService:
         logger.info(f"Uploaded: gs://{PodcastConfig.GCS_BUCKET_NAME}/{filename}")
         return filename
 
+    def download_from_bucket(self, filename: str) -> bytes:
+        """Download the generated MP3 bytes from GCS bucket."""
+        creds: service_account.Credentials = GCPAuthService.get_credentials()
+        storage_client = storage.Client(credentials=creds, project=creds.project_id)
+        bucket = storage_client.bucket(PodcastConfig.GCS_BUCKET_NAME)
+        blob = bucket.blob(filename)
+        return blob.download_as_bytes()
+
+
+class PodcastMailService:
+    """Sends generated podcast MP3 via Gmail API."""
+
+    def __init__(self) -> None:
+        if not PodcastConfig.SENDER_EMAIL or not PodcastConfig.RECIPIENT_EMAIL:
+            raise RuntimeError("SENDER_EMAIL and RECIPIENT_EMAIL environment variables are required.")
+
+    def send_podcast_mail(self, podcast_filename: str, podcast_bytes: bytes) -> None:
+        """Send podcast email with MP3 attachment."""
+        msg = MIMEMultipart()
+        msg["From"] = PodcastConfig.SENDER_EMAIL
+        msg["To"] = PodcastConfig.RECIPIENT_EMAIL
+        msg["Subject"] = f"New Podcast {datetime.now().strftime('%Y-%m-%d')}"
+        msg.attach(MIMEText("Hier ist der heutige Podcast.", "plain", "utf-8"))
+
+        part = MIMEBase("audio", "mpeg")
+        part.set_payload(podcast_bytes)
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename={podcast_filename}")
+        msg.attach(part)
+
+        gmail_service = GCPAuthService.get_gmail_service()
+        raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+        gmail_service.users().messages().send(userId="me", body={"raw": raw_message}).execute()
+        logger.info(f"Podcast mail sent to {PodcastConfig.RECIPIENT_EMAIL} with attachment {podcast_filename}.")
+
 
 @functions_framework.http
 def podcast_trigger(request: Any) -> Tuple[str, int]:
@@ -208,6 +286,7 @@ def podcast_trigger(request: Any) -> Tuple[str, int]:
         db = FirestoreDatabase()
         ai_service = PodcastAIService(GCPAuthService.get_gemini_api_key())
         audio_service = AudioService()
+        mail_service = PodcastMailService()
 
         candidates: List[Tuple[Any, Dict[str, Any]]] = db.fetch_entries()
 
@@ -224,6 +303,12 @@ def podcast_trigger(request: Any) -> Tuple[str, int]:
         script: List[str] = ai_service.generate_script(raw_content)
         filename: Optional[str] = audio_service.generate_and_upload(script)
 
+        if not filename:
+            raise RuntimeError("Podcast generation did not produce a file.")
+
+        podcast_bytes = audio_service.download_from_bucket(filename)
+        mail_service.send_podcast_mail(filename, podcast_bytes)
+
         db.mark_as_podcast_generated(doc_refs)
 
         response_data: Dict[str, Any] = {
@@ -231,7 +316,8 @@ def podcast_trigger(request: Any) -> Tuple[str, int]:
             "file": filename,
             "details": {
                 "entries_processed": len(doc_refs),
-                "script_passages": len(script)
+                "script_passages": len(script),
+                "mail_sent_to": PodcastConfig.RECIPIENT_EMAIL,
             }
         }
         logger.info("Execution completed.")

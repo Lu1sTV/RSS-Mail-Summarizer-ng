@@ -43,6 +43,9 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    ```bash
    export GEMINI_API_KEY="dein_gemini_api_key"
    export GCS_BUCKET_NAME="dein-podcast-bucket"
+   export SENDER_EMAIL="sender@example.com"
+   export RECIPIENT_EMAIL="user@example.com"
+   export CREDENTIALS_TOKEN_JSON='{"token":"...","refresh_token":"...","token_uri":"https://oauth2.googleapis.com/token","client_id":"...","client_secret":"...","scopes":["https://www.googleapis.com/auth/gmail.modify"]}'
    ```
 5. Starte den lokalen Server aus dem Hauptverzeichnis:
    ```bash
@@ -68,12 +71,18 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    gcloud secrets create rss-firebase-key --replication-policy="automatic"
    gcloud secrets create gemini-api-key --replication-policy="automatic"
    gcloud secrets create gcs-bucket-name --replication-policy="automatic"
+   gcloud secrets create sender-email --replication-policy="automatic"
+   gcloud secrets create recipient-email --replication-policy="automatic"
+   gcloud secrets create credentials-token-json --replication-policy="automatic"
    ```
 4. Lade die Keys und Werte in die erstellten Secrets hoch:
    ```bash
    gcloud secrets versions add rss-firebase-key --data-file="keys/serviceAccountKey.json"
    echo -n "DEIN_GEMINI_API_KEY" | gcloud secrets versions add gemini-api-key --data-file=-
    echo -n "DEIN_PODCAST_BUCKET" | gcloud secrets versions add gcs-bucket-name --data-file=-
+   echo -n "sender@example.com" | gcloud secrets versions add sender-email --data-file=-
+   echo -n "user@example.com" | gcloud secrets versions add recipient-email --data-file=-
+   cat keys/token.json | gcloud secrets versions add credentials-token-json --data-file=-
    ```
 5. Erteile dem Dienstkonto der Cloud Function die Berechtigung, die Secrets auszulesen:
    ```bash
@@ -106,7 +115,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
      --runtime=python311 \
      --memory=4GiB \
      --timeout=600s \
-     --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest
+       --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest,SENDER_EMAIL=sender-email:latest,RECIPIENT_EMAIL=recipient-email:latest,CREDENTIALS_TOKEN_JSON=credentials-token-json:latest
    ```
 
 ## Automatisierung mit Cloud Scheduler

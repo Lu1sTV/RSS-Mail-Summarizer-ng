@@ -23,3 +23,7 @@ class PodcastConfig:
 
     # GCS Bucket für die fertige MP3
     GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME")
+
+    # E-Mail Versand für den fertigen Podcast
+    SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
+    RECIPIENT_EMAIL = os.environ.get("RECIPIENT_EMAIL")

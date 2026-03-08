@@ -12,9 +12,10 @@ steps:
       - --entry-point=podcast_trigger
       - --trigger-http
       - --runtime=python311
+      - --service-account=rss-mail-summarizer@final-mail-summarizer.iam.gserviceaccount.com
       - --memory=4GiB
       - --timeout=600s
-      - --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest
+      - --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest,SENDER_EMAIL=sender-email:latest,RECIPIENT_EMAIL=recipient-email:latest,CREDENTIALS_TOKEN_JSON=gmail-token:latest
 
 options:
   logging: CLOUD_LOGGING_ONLY
