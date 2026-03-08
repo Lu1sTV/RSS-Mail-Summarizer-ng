@@ -234,13 +234,50 @@ gcloud secrets add-iam-policy-binding gmail-token \
 ## 11. GitHub Repository und Cloud Build verbinden (Google Cloud Console Web UI)
 
 *(Muss durch den Owner des Repositories durchgeführt werden)*
-1. Cloud Build → Trigger → Repository verbinden.
-2. Anbieter für Quellcodeverwaltung → global → GitHub Cloud Build Anwendung.
-3. Authentifizieren → GitHub Konto auswählen.
-4. RSS Mail Summarizer Repo wählen → zustimmen → Verbinden.
-5. Trigger erstellen.
 
-## 12. Scheduling einrichten (Cloud Shell)
+1. Cloud Build → Trigger → **Repository verbinden**.
+2. Anbieter für Quellcodeverwaltung auswählen → **global (Global)** lassen.
+3. **GitHub (Cloud Build-GitHub-Anwendung)** auswählen → Fortfahren.
+4. Authentifizieren → GitHub-Konto auswählen und Repository auswählen.
+   - Falls das Repo nicht sichtbar ist: über *Repositories auf GitHub bearbeiten* freischalten.
+5. Haken bei *Mir ist bewusst…* setzen → **Verbinden**.
+6. **Trigger erstellen** klicken.
+
+## 12. Cloud Build Trigger einrichten (Google Cloud Console Web UI)
+
+Für jede Function wird ein eigener Trigger angelegt. Im Folgenden wird der erste Trigger (alerts) Schritt für Schritt beschrieben – die übrigen werden analog erstellt.
+
+### Ersten Trigger anlegen (alerts)
+
+1. Cloud Build → Trigger → **Trigger erstellen**.
+2. Einstellungen:
+   - **Name:** `deploy-alerts`
+   - **Ereignis:** Push zu Zweig
+   - **Quelle:** Cloud Build Repository
+   - **Zweig:** `^main$`
+3. *Filter für enthaltene und ignorierte Dateien anzeigen* ausklappen:
+   - **Filter für enthaltene Dateien (glob):** `functions/alerts/**`
+4. **Cloud Build-Konfigurationsdatei (YAML oder JSON)** anhaken:
+   - **Standort:** Repository
+   - **Speicherort der Cloud Build-Konfigurationsdatei:** `/functions/alerts/cloudbuild.yaml`
+5. **Dienstkonto:** Das in Schritt 5 angelegte Dienstkonto (`rss-mail-summarizer@...`) auswählen.
+6. **Erstellen** klicken.
+
+### Weitere Trigger anlegen
+
+Den alerts-Trigger duplizieren und für jede weitere Function anpassen:
+
+| Name | Filter für enthaltene Dateien (glob) | Speicherort Cloud Build-Konfigurationsdatei |
+|---|---|---|
+| `deploy-mastodon` | `functions/mastodon/**` | `/functions/mastodon/cloudbuild.yaml` |
+| `deploy-podcast` | `functions/podcast/**` | `/functions/podcast/cloudbuild.yaml` |
+| `deploy-rss` | `functions/rss/**` | `/functions/rss/cloudbuild.yaml` |
+| `deploy-sendmail` | `functions/sendmail/**` | `/functions/sendmail/cloudbuild.yaml` |
+
+Alle anderen Einstellungen (Ereignis, Zweig, Dienstkonto) bleiben identisch.
+
+
+## 13. Scheduling einrichten (Cloud Shell)
 
 ```bash
 for f in rss-connector mastodon-connector alerts-connector; do

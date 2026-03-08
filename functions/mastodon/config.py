@@ -8,7 +8,6 @@ class Config:
     # Mastodon Feed-Definitionen
     MASTODON_FEEDS: List[Dict[str, str]] = [
         {"name": "pinboard_pop", "instance": "https://mstdn.social", "username": "pinboard_pop"},
-        {"name": "h4ckernews", "instance": "https://mstdn.social", "username": "h4ckernews"},
     ]
 
     # Limit der mastodon Einträge pro Feed
