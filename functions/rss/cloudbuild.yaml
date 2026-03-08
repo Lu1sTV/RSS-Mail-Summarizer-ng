@@ -12,7 +12,6 @@ steps:
       - --source=.
       - --entry-point=rss_connector
       - --trigger-http
-      #- --allow-unauthenticated
       - --memory=1GiB
       - --timeout=540s
       - --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest

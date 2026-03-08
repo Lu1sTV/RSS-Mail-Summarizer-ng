@@ -37,9 +37,7 @@ class GmailService:
                 token_data: Dict[str, Any] = json.loads(token_env)
                 creds: Credentials = Credentials.from_authorized_user_info(token_data, AlertConfig.SCOPES)
             else:
-                logger.debug("Gmail: using local token.json.")
-                token_path: str = os.path.join(os.path.dirname(__file__), 'keys', 'token.json')
-                creds: Credentials = Credentials.from_authorized_user_file(token_path, AlertConfig.SCOPES)
+                logger.debug("Gmail token is missing.")
 
             self.service: Resource = build('gmail', 'v1', credentials=creds)
 

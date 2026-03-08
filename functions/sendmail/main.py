@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Umgebungskonstanten
-MARKDOWN_REPORT_PATH = "markdown_report.md"
+MARKDOWN_REPORT_PATH = "functions/sendmail/markdown_report.md"
 SENDER_EMAIL = os.getenv("SENDER_EMAIL")
 RECIPIENT_EMAIL = os.getenv("RECIPIENT_EMAIL")
 PROJECT_ID = os.environ.get("PROJECT_ID")
