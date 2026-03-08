@@ -1,9 +1,5 @@
 <h1 align="center">RSS Mail Summarizer</h1>
 
-<p align=center>
-	<img src="logo.gif" alt="logo" width="250">
-</p>
-
 <p align="center">
 	<img src="RSS-Mail-Logo.jpg" alt="RSS-Mail-Summerizer-Logo" width="200"/>
 </p>
