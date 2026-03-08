@@ -7,10 +7,6 @@ import os
 class SendmailConfig:
     """Zentrale Config für den Sendmail-Generator."""
 
-    # Absender / Empfänger (aus Umgebungsvariablen)
-    SENDER_EMAIL = os.environ.get("SENDER_EMAIL")
-    RECIPIENT_EMAIL = os.environ.get("RECIPIENT_EMAIL")
-
     # Quellen-Filter – ["*"] = alle, [] = deaktiviert
     SOURCES = {
         "mastodon": ["*"],
@@ -19,7 +15,7 @@ class SendmailConfig:
     }
 
     # Max. Anzahl Links über alle Quellen
-    LIMIT = 20
+    LIMIT = 1
 
     # Nur Einträge der letzten X Stunden (None = kein Limit)
     TIME_WINDOW_HOURS = None

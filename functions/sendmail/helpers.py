@@ -396,7 +396,6 @@ Anweisungen:
    {', '.join(categories)}
    Wenn keine Kategorie passt, gib 'Uncategorized' zurück.
 """
-from .config import SendmailConfig
                 contents = [youtube_video, types.Part.from_text(text=prompt_text)]
                 generate_config = types.GenerateContentConfig(temperature=0, max_output_tokens=1024, response_modalities=["TEXT"])
                 response = self.genai_client.models.generate_content(model="gemini-3.1-flash-lite-preview", contents=contents, config=generate_config)
