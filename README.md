@@ -1,6 +1,11 @@
 <h1 align="center">RSS Mail Summarizer</h1>
 
 <p align="center">
+	<img src="RSS-Mail-Logo.png" alt="RSS-Mail-Summerizer-Logo" width="200"/>
+</p>
+
+
+<p align="center">
 	<img src="https://img.shields.io/badge/python-3.11%2B-3776AB?logo=python&logoColor=white" alt="Python 3.11+" />
 	<img src="https://img.shields.io/badge/runtime-Cloud%20Functions-4285F4?logo=googlecloud&logoColor=white" alt="Cloud Functions" />
 	<img src="https://img.shields.io/badge/deploy-Cloud%20Build-0F9D58?logo=googlecloud&logoColor=white" alt="Cloud Build" />
