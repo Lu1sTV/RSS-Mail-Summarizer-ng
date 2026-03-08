@@ -215,17 +215,6 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
     --role="roles/aiplatform.user"
 ```
-und anschließend noch ein Secret, in dieses muss die gleiche serviceAccountKey.json wie oben bei rss_firebase_key. Nur diesmal unter dem Namen: rss-vertex-ai-key (alternativ kann in llm_youtube_calls.py die SERVICE_ACCOUNT_SECRET_ID angepasst werden). Dem Dienstkonto müssen dann noch die folgenden Berechtigungen gegeben werden:
-
-```bash
-gcloud secrets add-iam-policy-binding rss-vertex-ai-key \
-  --member="serviceAccount:${IHRE_DIENSTKONTO_EMAIL}" \
-  --role="roles/secretmanager.secretAccessor"
-
-gcloud secrets add-iam-policy-binding rss-vertex-ai-key \
-  --member="serviceAccount:${PROJECT_NO}-compute@developer.gserviceaccount.com" \
-  --role="roles/secretmanager.secretAccessor"
-```
 
 **Hinweis:**  
 Wenn weitere Alerts erstellt werden, muss die **`alert_map`** in der Datei `alerts_connector.py` entsprechend erweitert werden.  

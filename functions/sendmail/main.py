@@ -54,7 +54,6 @@ class SendMailService:
             logger.error("❌ KRITISCH: Kein gültiger Gemini API-Key gefunden! Überprüfe:")
             logger.error("   - Umgebungsvariable GEMINI_API_KEY")
             logger.error("   - Secret Manager 'gemini-api-key' ")
-            logger.error("   - Fallback RSS_VERTEX_AI_KEY")
             raise RuntimeError("Kein Gemini API-Key konfiguriert. Cloud Function kann nicht starten.")
         
         logger.info("✓ Gemini API-Key erfolgreich geladen")

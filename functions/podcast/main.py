@@ -44,7 +44,7 @@ class GCPAuthService:
     @staticmethod
     def get_gemini_api_key() -> str:
         """Get Gemini API key from env."""
-        key: Optional[str] = os.getenv("GEMINI_API_KEY") or os.getenv("RSS_VERTEX_AI_KEY")
+        key: Optional[str] = os.getenv("GEMINI_API_KEY")
         if not key:
             raise RuntimeError("GEMINI_API_KEY environment variable is missing.")
         return key.strip()

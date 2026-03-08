@@ -192,7 +192,7 @@ class AIService:
         if self.llm is not None and self.genai_client is not None:
             return
         if not self.gemini_api_key:
-            raise RuntimeError("Kein gültiger Gemini API-Key gefunden. Bitte setze GEMINI_API_KEY (oder RSS_VERTEX_AI_KEY als Fallback) als Secret ohne Zeilenumbrüche.")
+            raise RuntimeError("Kein gültiger Gemini API-Key gefunden. Bitte setze GEMINI_API_KEY als Secret ohne Zeilenumbrüche.")
         self.genai_client = genai.Client(api_key=self.gemini_api_key)
         self.llm = self._init_llm()
 
