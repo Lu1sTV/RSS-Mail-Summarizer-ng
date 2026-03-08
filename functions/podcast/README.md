@@ -138,3 +138,7 @@ Um die Cloud Function automatisch einmal täglich (z. B. um 06:00 Uhr deutscher 
      --oidc-service-account-email="<SERVICE_ACCOUNT_EMAIL>" \
      --location=europe-west3
    ```
+
+## Hinweis
+
+Fuer das komplette Projekt-Initialsetup (APIs, globale Secrets, Trigger, Scheduler) siehe [InitialSetup.md](../../InitialSetup.md).

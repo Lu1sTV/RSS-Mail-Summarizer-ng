@@ -1,7 +1,7 @@
 <h1 align="center">RSS Mail Summarizer NG</h1>
 
 <p align="center">
-	Automatisierte Content-Pipeline fuer RSS, Mastodon und Alerts mit Mail-Report auf Google Cloud.
+	Automatisierte Content-Pipeline für RSS, Mastodon und Alerts mit Mail- und Podcast-Report auf Google Cloud.
 </p>
 
 <p align="center">
@@ -11,7 +11,7 @@
 	<img src="https://img.shields.io/badge/schedule-Cloud%20Scheduler-F9AB00?logo=googlecloud&logoColor=white" alt="Cloud Scheduler" />
 </p>
 
-Automatisierte Pipeline, die Inhalte aus RSS-Feeds, Mastodon und Alerts einsammelt, aufbereitet und als kompakten Mail-Report versendet. Das Projekt ist auf Google Cloud Functions ausgelegt und nutzt Cloud Build + Cloud Scheduler fuer Deployment und Ausfuehrung.
+Automatisierte Pipeline, die Inhalte aus RSS-Feeds, Mastodon und Alerts einsammelt, aufbereitet und als kompakten Mail- und Podcast-Report versendet. Das Projekt ist auf Google Cloud Functions ausgelegt und nutzt Cloud Build + Cloud Scheduler für Deployment und Ausführung.
 
 ## Quick Start
 
@@ -74,14 +74,14 @@ RSS-Mail-Summarizer-ng/
 `- README.md
 ```
 
-## Komponenten im Ueberblick
+## Komponenten im Überblick
 
 - `functions/rss`: Holt und verarbeitet RSS-Inhalte.
 - `functions/mastodon`: Holt und verarbeitet Mastodon-Inhalte.
-- `functions/alerts`: Verarbeitet Alert-Daten als zusaetzliche Quelle.
-- `functions/podcast`: Erzeugt/verwaltet Podcast-bezogene Inhalte.
-- `functions/sendmail`: Baut den finalen Report und versendet die E-Mail.
+- `functions/alerts`: Verarbeitet Alert-Daten als zusätzliche Quelle.
+- `functions/podcast`: Erzeugt/verwaltet den Podcast und versendet ihn als E-Mail.
+- `functions/sendmail`: Baut den finalen Report und versendet die Newsletter E-Mail.
 
 ## Deployment-Hinweis
 
-Jede Function hat eine eigene `cloudbuild.yaml` und kann ueber dedizierte Cloud-Build-Trigger deployt werden. Details inkl. Scheduler-Jobs stehen im [Initial Setup Guide](./InitialSetup.md).
+Jede Function hat eine eigene `cloudbuild.yaml` und kann über dedizierte Cloud-Build-Trigger deployt werden. Details inkl. Scheduler-Jobs stehen im [Initial Setup Guide](./InitialSetup.md).

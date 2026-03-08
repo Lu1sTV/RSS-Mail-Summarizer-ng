@@ -117,3 +117,7 @@ Um die Cloud Function automatisch um 08:00 und 16:00 Uhr deutscher Zeit auszufü
      --oidc-service-account-email="<SERVICE_ACCOUNT_EMAIL>" \
      --location=europe-west3
    ```
+
+## Hinweis
+
+Fuer das komplette Projekt-Initialsetup (APIs, globale Secrets, Trigger, Scheduler) siehe [InitialSetup.md](../../InitialSetup.md).
