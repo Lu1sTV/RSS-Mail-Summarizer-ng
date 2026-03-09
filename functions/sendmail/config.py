@@ -11,11 +11,11 @@ class SendmailConfig:
     SOURCES = {
         "mastodon": ["*"],
         "alerts": ["*"],
-        "rss": [],
+        "rss": ["*"],
     }
 
     # Max. Anzahl Links über alle Quellen
-    LIMIT = 1
+    LIMIT = None
 
     # Nur Einträge der letzten X Stunden (None = kein Limit)
     TIME_WINDOW_HOURS = None
