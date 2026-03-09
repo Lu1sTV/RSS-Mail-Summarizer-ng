@@ -22,7 +22,7 @@ from datetime import date
 # interne helpers
 from config import SendmailConfig
 from database import get_unsent_entries, mark_as_sent, add_datarecord
-from helpers import gmail_send_mail, create_markdown_report, AIService, get_gemini_api_key
+from helpers import gmail_send_mail, create_markdown_report, cleanup_markdown_report, AIService, get_gemini_api_key
 
 # Logger setup
 logging.basicConfig(level=logging.INFO)
@@ -171,6 +171,7 @@ class SendMailService:
         today_str = date.today()
 
         create_markdown_report(summaries_from_db, MARKDOWN_REPORT_PATH)
+        cleanup_markdown_report(MARKDOWN_REPORT_PATH)
         gmail_send_mail(
             self.sender_email,
             self.recipient_email,

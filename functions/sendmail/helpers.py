@@ -169,6 +169,106 @@ def create_markdown_report(summaries_and_categories, markdown_report_path):
         logger.error("Fehler beim Erstellen des Markdown-Reports: %s", e, exc_info=True)
 
 
+def cleanup_markdown_report(markdown_report_path):
+    """Bereinigt den erzeugten Markdown-Report.
+
+    - Führt doppelte Kategorien/Subkategorien zusammen (auch bei abweichender Groß-/Kleinschreibung/Whitespace).
+    - Entfernt Platzhalter-Einträge ohne verwertbare Summary.
+    """
+    logger.info("Bereinige Markdown-Report: %s", markdown_report_path)
+
+    if not os.path.exists(markdown_report_path):
+        logger.warning("Markdown-Report nicht gefunden, Cleanup übersprungen: %s", markdown_report_path)
+        return
+
+    try:
+        with open(markdown_report_path, "r", encoding="utf-8") as file:
+            lines = file.readlines()
+    except Exception as e:
+        logger.error("Konnte Markdown-Report nicht lesen: %s", e, exc_info=True)
+        return
+
+    grouped = {}
+    category_order = []
+    subcategory_order = {}
+
+    current_category_key = None
+    current_subcategory_key = "No Subcategory"
+
+    def _norm(value):
+        return " ".join((value or "").strip().split())
+
+    def _ensure_category(category_label):
+        category_display = _norm(category_label) or "Uncategorized"
+        category_key = category_display.casefold()
+        if category_key not in grouped:
+            grouped[category_key] = {
+                "display": category_display,
+                "subcategories": {},
+            }
+            category_order.append(category_key)
+            subcategory_order[category_key] = []
+        return category_key
+
+    def _ensure_subcategory(category_key, subcategory_label):
+        sub_display = _norm(subcategory_label) or "No Subcategory"
+        sub_key = sub_display.casefold()
+        if sub_key not in grouped[category_key]["subcategories"]:
+            grouped[category_key]["subcategories"][sub_key] = {
+                "display": sub_display,
+                "entries": [],
+            }
+            subcategory_order[category_key].append(sub_key)
+        return sub_key
+
+    for raw_line in lines:
+        line = raw_line.rstrip("\n")
+        stripped = line.strip()
+
+        if stripped.startswith("## "):
+            current_category_key = _ensure_category(stripped[3:])
+            current_subcategory_key = _ensure_subcategory(current_category_key, "No Subcategory")
+            continue
+
+        if stripped.startswith("### ") and current_category_key is not None:
+            current_subcategory_key = _ensure_subcategory(current_category_key, stripped[4:])
+            continue
+
+        if stripped.startswith("- ") and current_category_key is not None:
+            if "(keine Zusammenfassung verfügbar)" in stripped and "read time n/a" in stripped:
+                continue
+            entry_list = grouped[current_category_key]["subcategories"][current_subcategory_key]["entries"]
+            if stripped not in entry_list:
+                entry_list.append(stripped)
+
+    try:
+        with open(markdown_report_path, "w", encoding="utf-8") as file:
+            file.write("# News of the Day\n\n")
+            for category_key in category_order:
+                category_data = grouped[category_key]
+                has_any_entries = any(
+                    sub_data["entries"]
+                    for sub_data in category_data["subcategories"].values()
+                )
+                if not has_any_entries:
+                    continue
+
+                file.write(f"## {category_data['display']}\n\n")
+                for sub_key in subcategory_order[category_key]:
+                    sub_data = category_data["subcategories"][sub_key]
+                    if not sub_data["entries"]:
+                        continue
+
+                    if sub_data["display"] != "No Subcategory":
+                        file.write(f"### {sub_data['display']}\n\n")
+
+                    for entry in sub_data["entries"]:
+                        file.write(entry + "\n")
+                    file.write("\n")
+    except Exception as e:
+        logger.error("Fehler beim Bereinigen des Markdown-Reports: %s", e, exc_info=True)
+
+
 # --------------------- AI Service (lazy init, 1:1 from llm_calls.py) --------
 class AIService:
     def __init__(self, gemini_api_key: str):
