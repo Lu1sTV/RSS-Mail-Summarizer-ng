@@ -30,9 +30,8 @@ class FirestoreDatabase:
                 logger.debug("Firebase: using env secret.")
                 cred = credentials.Certificate(json.loads(key_json))
             else:
-                logger.debug("Firebase: using local key file.")
-                key_path: str = os.path.join(os.path.dirname(__file__), "keys", "serviceAccountKey.json")
-                cred = credentials.Certificate(key_path)
+                logger.error("Firebase key is missing.")
+                raise RuntimeError("RSS_FIREBASE_KEY environment variable is missing but required.")
 
             if not firebase_admin._apps:
                 firebase_admin.initialize_app(cred)

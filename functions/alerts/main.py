@@ -37,7 +37,8 @@ class GmailService:
                 token_data: Dict[str, Any] = json.loads(token_env)
                 creds: Credentials = Credentials.from_authorized_user_info(token_data, AlertConfig.SCOPES)
             else:
-                logger.debug("Gmail token is missing.")
+                logger.error("Gmail token is missing.")
+                raise RuntimeError("GMAIL_TOKEN_JSON environment variable is missing but required.")
 
             self.service: Resource = build('gmail', 'v1', credentials=creds)
 
