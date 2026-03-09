@@ -11,7 +11,7 @@ class Config:
     ]
 
     # Limit der mastodon Einträge pro Feed
-    ENTRY_LIMIT = 20
+    ENTRY_LIMIT = 10
 
     # True: alle neuen Einträge seit letztem Crawl holen (mit Pagination)
     # False: maximal ENTRY_LIMIT neue Einträge seit letztem Crawl holen
