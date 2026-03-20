@@ -37,12 +37,13 @@ Zusaetzlich wird fuer lokale Tests benoetigt:
 	pip install -r requirements.txt
 	cd ../..
 	```
-3. Platziere die `serviceAccountKey.json` im Ordner `functions/mastodon/`.
+3. Platziere die `serviceAccountKey.json` im Ordner `keys/`.
 4. Starte den lokalen Server aus `functions/mastodon/`:
 	```bash
 	cd functions/mastodon
 	functions-framework --target=mastodon_connector_activate --debug
 	```
+
 5. Loese die Funktion in einem zweiten Terminal-Fenster aus:
 	```bash
 	curl http://localhost:8080
@@ -64,7 +65,7 @@ Zusaetzlich wird fuer lokale Tests benoetigt:
 	```
 4. Lade die lokale Datei in das Secret hoch:
 	```bash
-	gcloud secrets versions add rss-firebase-key --data-file="functions/mastodon/serviceAccountKey.json"
+	gcloud secrets versions add rss-firebase-key --data-file="functions/mastodon/keys/serviceAccountKey.json"
 	```
 5. Erteile dem Dienstkonto der Cloud Function die Berechtigung, das Secret auszulesen:
 	```bash
@@ -83,8 +84,7 @@ Zusaetzlich wird fuer lokale Tests benoetigt:
 	  --runtime=python311 \
 	  --memory=2GiB \
 	  --timeout=120s \
-	  --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest \
-	  --set-env-vars=PROJECT_ID=<PROJECT_ID>,LOG_LEVEL=DEBUG
+	  --set-secrets=RSS_FIREBASE_KEY=rss-firebase-key:latest
 	```
 
 ## Automatisierung mit Cloud Scheduler

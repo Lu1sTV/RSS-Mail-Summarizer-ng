@@ -3,6 +3,7 @@ Dieses Modul kapselt alle Firestore-Zugriffe fuer die Mastodon Function.
 """
 
 import os
+import json
 import logging
 from datetime import datetime, timezone
 import re
@@ -10,32 +11,34 @@ from urllib.parse import urlparse, parse_qs, unquote
 from dotenv import load_dotenv
 import firebase_admin
 from firebase_admin import credentials, firestore, initialize_app
+from config import Config
 
 load_dotenv()
 
-log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level_name = getattr(Config, "LOG_LEVEL", "INFO")
+log_level = getattr(logging, log_level_name, logging.INFO)
 logging.basicConfig(
-    level=getattr(logging, log_level, logging.INFO),
+    level=log_level,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 logger = logging.getLogger("app_logger")
 
 def initialize_firebase():
-    if not firebase_admin._apps:
-        if os.getenv('K_SERVICE'):
-            logger.info("Cloud-Umgebung erkannt: Nutze Application Default Credentials.")
-            initialize_app()
+    try:
+        key_json = os.environ.get("RSS_FIREBASE_KEY")
+        if key_json:
+            logger.debug("Firebase: using env secret.")
+            cred = credentials.Certificate(json.loads(key_json))
         else:
-            SERVICE_ACCOUNT_KEY_PATH = "serviceAccountKey.json"
-            if os.path.exists(SERVICE_ACCOUNT_KEY_PATH):
-                logger.info(f"Lokale Umgebung: Nutze {SERVICE_ACCOUNT_KEY_PATH}")
-                cred = credentials.Certificate(SERVICE_ACCOUNT_KEY_PATH)
-                initialize_app(cred)
-            else:
-                logger.error("Keine Credentials gefunden (weder Cloud noch lokale Datei)!")
-                raise FileNotFoundError("Service Account Key fehlt für lokale Ausführung.")
-    else:
-        logger.debug("Firebase war bereits initialisiert.")
+            logger.debug("Firebase: using local key file.")
+            key_path = os.path.join(os.path.dirname(__file__), "keys", "serviceAccountKey.json")
+            cred = credentials.Certificate(key_path)
+
+        if not firebase_admin._apps:
+            initialize_app(cred)
+    except Exception as e:
+        logger.error(f"Firestore connection failed: {e}")
+        raise RuntimeError(f"Firestore Connection failed: {str(e)}")
 
 def safe_url(google_url: str) -> str:
     """Extrahiert echte URL aus Google Redirect und macht sie Firestore-kompatibel."""

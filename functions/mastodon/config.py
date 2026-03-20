@@ -17,6 +17,5 @@ class Config:
     # False: maximal ENTRY_LIMIT neue Einträge seit letztem Crawl holen
     FETCH_ALL_SINCE_LAST = True
 
-    # Projekt-Metadaten
-    PROJECT_ID = os.environ.get('PROJECT_ID', 'mail-summerizer-486619')
-    LOG_LEVEL = "INFO"
+    # Laufzeit-Metadaten
+    LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
