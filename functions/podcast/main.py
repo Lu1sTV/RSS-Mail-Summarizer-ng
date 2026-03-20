@@ -4,6 +4,8 @@ import sys
 import json
 import base64
 import logging
+import requests
+from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
@@ -107,30 +109,25 @@ class PodcastAIService:
         return url
 
     def fetch_raw_content(self, urls: List[str]) -> List[str]:
-        """Fetch web content via Gemini URL-Grounding and summarize YouTube videos."""
+        """Scrape web pages via BeautifulSoup and summarize YouTube videos via Gemini."""
         youtube_urls: List[str] = [u for u in urls if "youtube.com" in u or "youtu.be" in u]
         web_urls: List[str] = [u for u in urls if u not in youtube_urls]
 
         content_collection: List[str] = []
+        headers: Dict[str, str] = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
 
         for url in web_urls:
-            logger.info(f"Fetching web (Gemini URL-Grounding): {url}")
+            logger.info(f"Fetching web: {url}")
             try:
-                response = self.client.models.generate_content(
-                    model=PodcastConfig.GEMINI_MODEL,
-                    contents=(
-                        f"Fasse den Inhalt der folgenden Webseite ausfuehrlich zusammen. "
-                        f"Nenne alle wichtigen Fakten, Argumente und Details.\n\nURL: {url}"
-                    ),
-                    config=types.GenerateContentConfig(
-                        tools=[types.Tool(url_context=types.UrlContext())],
-                    ),
-                )
-                text: str = response.text.strip()
-                char_count = len(text)
-                content_collection.append(
-                    f"Quelle: {url}\nInhalt: {text[:PodcastConfig.MAX_CONTENT_CHARS]}"
-                )
+                res = requests.get(url, headers=headers, timeout=15)
+                res.raise_for_status()
+                soup: BeautifulSoup = BeautifulSoup(res.content, 'html.parser')
+                text: str = ' '.join([p.get_text() for p in soup.find_all(['p', 'article', 'h1', 'h2', 'h3'])])
+                clean_text: str = text.replace('\n', ' ').strip()
+                char_count = len(clean_text)
+                content_collection.append(f"Quelle: {url}\nInhalt: {clean_text[:PodcastConfig.MAX_CONTENT_CHARS]}")
                 logger.info(f"  -> {char_count} chars fetched for {url}")
             except Exception as e:
                 logger.error(f"Fetch failed ({url}): {e}")
