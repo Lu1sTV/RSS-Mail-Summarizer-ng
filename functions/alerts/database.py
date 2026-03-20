@@ -12,7 +12,7 @@ from firebase_admin import credentials, firestore
 
 # Logger Setup
 logger = logging.getLogger("alerts_processor")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(getattr(logging, os.environ.get("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG))
 
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)

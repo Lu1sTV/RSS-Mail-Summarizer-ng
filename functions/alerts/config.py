@@ -17,7 +17,7 @@ class AlertConfig:
     LINK_BLACKLIST: List[str] = [
         "google.com/alerts", "google.de/alerts", "google.at/alerts", "google.ch/alerts",
         "alerts/remove", "alerts/edit",
-        "support.google.com", 
+        "support.google.com",
         "google.com/settings", "google.de/settings", "google.at/settings", "google.ch/settings",
     ]
 
@@ -29,3 +29,6 @@ class AlertConfig:
 
     # Nur Mails der letzten X Tage (None = kein Limit)
     MAX_AGE_DAYS: Optional[int] = None
+
+    # Max. Seiten bei Gmail Pagination (None = unbegrenzt)
+    MAX_PAGES: Optional[int] = 5

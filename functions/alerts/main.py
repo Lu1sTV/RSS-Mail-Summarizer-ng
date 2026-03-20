@@ -3,7 +3,6 @@ import sys
 import json
 import base64
 import logging
-import traceback
 from typing import List, Dict, Any, Optional, Tuple
 
 import functions_framework
@@ -18,7 +17,7 @@ from database import FirestoreDatabase
 
 # Logger Setup
 logger = logging.getLogger("alerts_processor")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(getattr(logging, os.environ.get("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG))
 
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
@@ -64,15 +63,32 @@ class GmailService:
             raise
 
     def get_messages(self, label_id: str) -> List[Dict[str, str]]:
-        """Fetch messages by label, respecting MAX_RESULTS and MAX_AGE_DAYS."""
+        """Fetch messages by label, respecting MAX_RESULTS, MAX_AGE_DAYS and pagination via MAX_PAGES."""
         try:
             kwargs: Dict[str, Any] = {"userId": "me", "labelIds": [label_id]}
             if AlertConfig.MAX_RESULTS:
                 kwargs["maxResults"] = AlertConfig.MAX_RESULTS
             if AlertConfig.MAX_AGE_DAYS:
                 kwargs["q"] = f"newer_than:{AlertConfig.MAX_AGE_DAYS}d"
-            response: Dict[str, Any] = self.service.users().messages().list(**kwargs).execute()
-            return response.get('messages', [])
+
+            all_messages: List[Dict[str, str]] = []
+            pages_fetched: int = 0
+
+            while True:
+                response: Dict[str, Any] = self.service.users().messages().list(**kwargs).execute()
+                all_messages.extend(response.get('messages', []))
+                pages_fetched += 1
+
+                next_page_token: Optional[str] = response.get('nextPageToken')
+                if not next_page_token:
+                    break
+                if AlertConfig.MAX_PAGES and pages_fetched >= AlertConfig.MAX_PAGES:
+                    logger.info(f"Reached MAX_PAGES limit ({AlertConfig.MAX_PAGES}), stopping pagination.")
+                    break
+                kwargs["pageToken"] = next_page_token
+
+            logger.debug(f"Fetched {len(all_messages)} messages in {pages_fetched} page(s) for label {label_id}.")
+            return all_messages
         except Exception as e:
             logger.error(f"Failed to fetch messages for label {label_id}: {e}")
             raise
@@ -127,7 +143,7 @@ class AlertProcessor:
 
     def process_config(self, config: Dict[str, str]) -> Dict[str, Any]:
         """Process one alert config: fetch mails, extract links, save & move."""
-        result: Dict[str, Any] = {"name": config["name"], "processed": 0, "status": "ok", "error": None}
+        result: Dict[str, Any] = {"name": config["name"], "messages_processed": 0, "status": "ok", "error": None}
         logger.info(f"Processing alert: {config['name']}")
 
         try:
@@ -157,7 +173,12 @@ class AlertProcessor:
                     logger.warning(f"No HTML body for {msg_id}, skipping.")
                     continue
 
-                html_content: str = base64.urlsafe_b64decode(body_data).decode()
+                try:
+                    html_content: str = base64.urlsafe_b64decode(body_data).decode()
+                except Exception as decode_err:
+                    logger.error(f"Failed to decode body for message {msg_id}: {decode_err}")
+                    continue
+
                 soup: BeautifulSoup = BeautifulSoup(html_content, 'html.parser')
 
                 links_found: int = 0
@@ -169,16 +190,15 @@ class AlertProcessor:
 
                 logger.debug(f"{links_found} links in message {msg_id}.")
                 self.gmail.move_message(msg_id, id_in, id_out)
-                result["processed"] += 1
+                result["messages_processed"] += 1
 
-            logger.info(f"Done '{config['name']}': {result['processed']} mails processed.")
+            logger.info(f"Done '{config['name']}': {result['messages_processed']} mails processed.")
             return result
 
         except Exception as e:
-            logger.error(f"Error processing '{config['name']}': {e}")
+            logger.error(f"Error processing '{config['name']}': {e}", exc_info=True)
             result["status"] = "error"
             result["error"] = str(e)
-            result["traceback"] = traceback.format_exc()
             return result
 
 @functions_framework.http
@@ -197,13 +217,21 @@ def alerts_mvp_endpoint(request: Any) -> Tuple[str, int]:
         for c in AlertConfig.ALERT_CONFIG:
             res: Dict[str, Any] = processor.process_config(c)
             results.append(res)
-            total_processed += res["processed"]
+            total_processed += res["messages_processed"]
             if res["status"] == "error":
                 has_errors = True
 
+        configs_with_errors: int = sum(1 for r in results if r["status"] == "error")
+
         response_data: Dict[str, Any] = {
-            "total_processed": total_processed,
-            "details": results,
+            "status": "error" if has_errors else "success",
+            "resource": "firestore/website",
+            "details": {
+                "entries_processed": total_processed,
+                "configs_run": len(results),
+                "configs_with_errors": configs_with_errors,
+                "per_config": results,
+            },
         }
 
         if has_errors:
@@ -215,7 +243,7 @@ def alerts_mvp_endpoint(request: Any) -> Tuple[str, int]:
 
     except RuntimeError as re:
         logger.critical(f"Init error: {re}")
-        return json.dumps({"error": "Initialization failed", "details": str(re)}, indent=2), 500
+        return json.dumps({"status": "error", "resource": "firestore/website", "details": {"error": "Initialization failed"}}, indent=2), 500
     except Exception as e:
-        logger.critical(f"Server error: {e}\n{traceback.format_exc()}")
-        return json.dumps({"error": "Internal Server Error", "details": str(e), "traceback": traceback.format_exc()}, indent=2), 500
+        logger.critical(f"Server error: {e}", exc_info=True)
+        return json.dumps({"status": "error", "resource": "firestore/website", "details": {"error": "Internal server error"}}, indent=2), 500

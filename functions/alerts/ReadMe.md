@@ -41,7 +41,7 @@ Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötig
 4. Navigiere in den Ordner `keys/` und generiere das Token:
    ```bash
    cd keys
-   python generate_token.py
+   python generate_gmail_token.py
    cd ..
    ```
 5. Starte den lokalen Server aus dem Hauptverzeichnis:
@@ -65,17 +65,17 @@ Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötig
    ```
 3. Erstelle die Secrets für die Zugangsdaten im Google Cloud Secret Manager:
    ```bash
-   gcloud secrets create gmail-token-json --replication-policy="automatic"
+   gcloud secrets create gmail-token --replication-policy="automatic"
    gcloud secrets create rss-firebase-key --replication-policy="automatic"
    ```
 4. Lade die lokalen Dateien in die erstellten Secrets hoch:
    ```bash
-   gcloud secrets versions add gmail-token-json --data-file="keys/token.json"
+   gcloud secrets versions add gmail-token --data-file="keys/token.json"
    gcloud secrets versions add rss-firebase-key --data-file="keys/serviceAccountKey.json"
    ```
 5. Erteile dem Dienstkonto der Cloud Function die Berechtigung, die Secrets auszulesen:
    ```bash
-   gcloud secrets add-iam-policy-binding gmail-token-json \
+   gcloud secrets add-iam-policy-binding gmail-token \
      --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>" \
      --role="roles/secretmanager.secretAccessor"
 
@@ -94,7 +94,7 @@ Zusätzlich werden folgende Authentifizierungsdateien im Ordner `keys/` benötig
      --runtime=python311 \
      --memory=512MiB \
      --timeout=60s \
-     --set-secrets=GMAIL_TOKEN_JSON=gmail-token-json:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest
+     --set-secrets=GMAIL_TOKEN_JSON=gmail-token:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest
    ```
 
 ## Automatisierung mit Cloud Scheduler
@@ -103,7 +103,7 @@ Um die Cloud Function automatisch um 08:00 und 16:00 Uhr deutscher Zeit auszufü
 
 1. Erteile dem Dienstkonto die Berechtigung, die Cloud Function (Gen 2) aufzurufen:
    ```bash
-   gcloud functions add-invoker-policy-binding alerts-handler \
+   gcloud functions add-invoker-policy-binding alerts-connector \
      --region=europe-west3 \
      --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>"
    ```
