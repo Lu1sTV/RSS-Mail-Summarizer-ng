@@ -33,7 +33,7 @@ if not logger.handlers:
 
 
 class GCPAuthService:
-    """GCP auth for TTS and Storage."""
+    """Zentrale Authentifizierung fuer GCP-Dienste (TTS, Storage, Gmail, Gemini)."""
 
     @staticmethod
     def get_credentials() -> service_account.Credentials:
@@ -248,7 +248,7 @@ class PodcastAIService:
 
 
 class AudioService:
-    """TTS synthesis and GCS upload."""
+    """TTS-Synthese mit Google Cloud Text-to-Speech, GCS-Upload und Signed-URL-Generierung."""
 
     VOICES: List[str] = [PodcastConfig.TTS_HOST_VOICE, PodcastConfig.TTS_GUEST_VOICE]
 
@@ -313,7 +313,7 @@ class AudioService:
 
 
 class PodcastMailService:
-    """Sends podcast download link via Gmail API."""
+    """Versendet die Podcast-Download-Mail mit signiertem Link ueber die Gmail-API."""
 
     def __init__(self) -> None:
         if not PodcastConfig.SENDER_EMAIL or not PodcastConfig.RECIPIENT_EMAIL:

@@ -2,15 +2,17 @@
 
 Dieses Projekt ist eine Google Cloud Function, die automatisiert ungelesene Artikel und Posts aus einer Firestore-Datenbank ausliest, daraus mit Gemini ein Podcast-Skript erstellt, dieses per Google Cloud Text-to-Speech (TTS) vertont und die fertige MP3-Datei in einen Google Cloud Storage Bucket hochlädt.
 
-## Aufbau und Funktionen
+## Module
 
-Das Skript ist modular aufgebaut und umfasst folgende Kernkomponenten:
-
-* **Config (`config.py`)**: Quellen (Mastodon, Alerts, RSS), Limit und optionales Zeitfenster.
-* **Database (`database.py`)**: Firestore-Anbindung – lädt unverarbeitete Einträge anhand der Config, filtert clientseitig nach `podcast_generated` (fehlendes Feld = `False`) und markiert verarbeitete Docs.
-* **PodcastAIService (`main.py`)**: Lädt Rohtexte von Web-URLs, erstellt YouTube-Zusammenfassungen über das Google GenAI SDK und generiert mit Gemini 2.5 Flash ein zweistimmiges Podcast-Skript als JSON-Array.
-* **AudioService (`main.py`)**: Wandelt das Skript abwechselnd mit zwei TTS-Stimmen (`de-DE-Journey-D` / `de-DE-Journey-F`) in Audio um und lädt die MP3 in den konfigurierten GCS Bucket hoch.
-* **podcast_trigger (`main.py`)**: HTTP-Einstiegspunkt – koordiniert den gesamten Pipeline-Ablauf.
+| Modul | Verantwortlichkeit |
+|---|---|
+| `config.py` | Zentrale Konfiguration: Quellen, Limit, Zeitfenster, Gemini-Parameter (Temperatur, max. Output-Tokens), TTS-Stimmen + Sample-Rate, Podcast-Ziellaenge (min/max Minuten), Signed-URL-Ablaufdauer. |
+| `database.py` | Firestore-Anbindung: laedt unverarbeitete Eintraege, filtert nach `podcast_generated`, markiert verarbeitete Docs per Batch-Update. |
+| `GCPAuthService` | Authentifizierung gegenueber GCP-Diensten (TTS, Storage, Gmail, Gemini). Laedt SA-Credentials aus `RSS_FIREBASE_KEY` oder lokal `keys/serviceAccountKey.json`, baut Gmail-Client aus `GMAIL_TOKEN_JSON`. |
+| `PodcastAIService` | Web-Scraping via BeautifulSoup, YouTube-Zusammenfassungen via GenAI SDK, Skriptgenerierung mit Gemini 2.5 Flash (JSON-Array, 2 Stimmen). Wortbasierte Laengenvalidierung + Retry + URL-Bereinigung. |
+| `AudioService` | TTS-Synthese mit Journey-Stimmen (`de-DE-Journey-D` / `de-DE-Journey-F`), GCS-Upload (MP3), V4-Signed-URL-Generierung. |
+| `PodcastMailService` | HTML-E-Mail mit signiertem Download-Link ueber die Gmail-API. |
+| `podcast_trigger` | HTTP-Einstiegspunkt: koordiniert die Pipeline, einheitliches JSON-Response-Schema (`status`, `resource`, `details`). |
 
 ## Systemvoraussetzungen (Requirements)
 
@@ -115,7 +117,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
      --runtime=python311 \
      --memory=4GiB \
      --timeout=600s \
-       --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest,SENDER_EMAIL=sender-email:latest,RECIPIENT_EMAIL=recipient-email:latest,CREDENTIALS_TOKEN_JSON=credentials-token-json:latest
+       --set-secrets=GCS_BUCKET_NAME=gcs-bucket-name:latest,RSS_FIREBASE_KEY=rss-firebase-key:latest,GEMINI_API_KEY=gemini-api-key:latest,SENDER_EMAIL=sender-email:latest,RECIPIENT_EMAIL=recipient-email:latest,GMAIL_TOKEN_JSON=gmail-token:latest
    ```
 
 ## Automatisierung mit Cloud Scheduler
@@ -138,6 +140,45 @@ Um die Cloud Function automatisch einmal täglich (z. B. um 06:00 Uhr deutscher 
      --oidc-service-account-email="<SERVICE_ACCOUNT_EMAIL>" \
      --location=europe-west3
    ```
+
+## Architektur
+
+```
+Cloud Scheduler (cron)
+        |
+        v
+podcast_trigger (HTTP Entry Point)
+        |
+        v
+FirestoreDatabase.fetch_entries()
+        |   Firestore Collection "website"
+        |   filtert: podcast_generated == False
+        v
+PodcastAIService.fetch_raw_content(urls)
+        |   Web-URLs  --> BeautifulSoup (requests + HTML-Parser)
+        |   YouTube   --> Gemini GenAI SDK (video/* summarization)
+        v
+PodcastAIService.generate_script(content)
+        |   Gemini 2.5 Flash (JSON-Array, 2 Stimmen)
+        |   Laengenvalidierung (Wortanzahl / WPM)
+        |   Retry bei zu kurzem Skript
+        |   URL-Bereinigung (_strip_urls)
+        v
+AudioService.generate_and_upload(script)
+        |   Google Cloud TTS (Journey-Stimmen)
+        |   Upload --> GCS Bucket (MP3)
+        v
+AudioService.generate_signed_url(filename)
+        |   V4 Signed URL (konfigurierbare Ablaufdauer)
+        v
+PodcastMailService.send_podcast_mail()
+        |   Gmail API --> HTML-Mail mit Download-Link
+        v
+FirestoreDatabase.mark_as_podcast_generated()
+        |   Batch-Update: podcast_generated = True
+        v
+    JSON Response {status, resource, details}
+```
 
 ## Hinweis
 

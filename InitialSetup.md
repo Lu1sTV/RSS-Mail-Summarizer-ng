@@ -205,7 +205,7 @@ gcloud secrets add-iam-policy-binding gmail-credentials \
 
 ```bash
 pip install google-auth-oauthlib
-python kyes/generate_gmail_token.py
+cd keys && python generate_gmail_token.py && cd ..
 ```
 
 ### Token als Secret speichern
@@ -241,7 +241,7 @@ Für lokale Tests fehlen danach typischerweise noch die Runtime-Secrets aus Goog
 | Secret Manager Name | `.env` Key |
 |---|---|
 | `rss-firebase-key` | `RSS_FIREBASE_KEY` |
-| `gmail-token` | `GMAIL_TOKEN_JSON` und `CREDENTIALS_TOKEN_JSON` |
+| `gmail-token` | `GMAIL_TOKEN_JSON` |
 | `gemini-api-key` | `GEMINI_API_KEY` |
 | `gcs-bucket-name` | `GCS_BUCKET_NAME` |
 | `sender-email` | `SENDER_EMAIL` |
@@ -274,7 +274,6 @@ PROJECT_ID=$PROJECT_ID
 LOG_LEVEL=INFO
 RSS_FIREBASE_KEY='$RSS_FIREBASE_KEY'
 GMAIL_TOKEN_JSON='$GMAIL_TOKEN_JSON'
-CREDENTIALS_TOKEN_JSON='$GMAIL_TOKEN_JSON'
 GEMINI_API_KEY=$GEMINI_API_KEY
 GCS_BUCKET_NAME=$GCS_BUCKET_NAME
 SENDER_EMAIL=$SENDER_EMAIL
@@ -294,7 +293,7 @@ gcloud config set project <PROJECT_ID>
 ```
 
 ```cmd
-powershell -NoProfile -Command "$p=(gcloud config get-value project).Trim();$rf=(gcloud secrets versions access latest --secret=rss-firebase-key | ConvertFrom-Json | ConvertTo-Json -Compress);$gt=(gcloud secrets versions access latest --secret=gmail-token | ConvertFrom-Json | ConvertTo-Json -Compress);$gk=(gcloud secrets versions access latest --secret=gemini-api-key).Trim();$bn=(gcloud secrets versions access latest --secret=gcs-bucket-name).Trim();$se=(gcloud secrets versions access latest --secret=sender-email).Trim();$re=(gcloud secrets versions access latest --secret=recipient-email).Trim();Set-Content -Encoding utf8 .env ('PROJECT_ID=' + $p);Add-Content .env 'LOG_LEVEL=INFO';Add-Content .env ('RSS_FIREBASE_KEY=''' + $rf + '''');Add-Content .env ('GMAIL_TOKEN_JSON=''' + $gt + '''');Add-Content .env ('CREDENTIALS_TOKEN_JSON=''' + $gt + '''');Add-Content .env ('GEMINI_API_KEY=' + $gk);Add-Content .env ('GCS_BUCKET_NAME=' + $bn);Add-Content .env ('SENDER_EMAIL=' + $se);Add-Content .env ('RECIPIENT_EMAIL=' + $re)"
+powershell -NoProfile -Command "$p=(gcloud config get-value project).Trim();$rf=(gcloud secrets versions access latest --secret=rss-firebase-key | ConvertFrom-Json | ConvertTo-Json -Compress);$gt=(gcloud secrets versions access latest --secret=gmail-token | ConvertFrom-Json | ConvertTo-Json -Compress);$gk=(gcloud secrets versions access latest --secret=gemini-api-key).Trim();$bn=(gcloud secrets versions access latest --secret=gcs-bucket-name).Trim();$se=(gcloud secrets versions access latest --secret=sender-email).Trim();$re=(gcloud secrets versions access latest --secret=recipient-email).Trim();Set-Content -Encoding utf8 .env ('PROJECT_ID=' + $p);Add-Content .env 'LOG_LEVEL=INFO';Add-Content .env ('RSS_FIREBASE_KEY=''' + $rf + '''');Add-Content .env ('GMAIL_TOKEN_JSON=''' + $gt + '''');Add-Content .env ('GEMINI_API_KEY=' + $gk);Add-Content .env ('GCS_BUCKET_NAME=' + $bn);Add-Content .env ('SENDER_EMAIL=' + $se);Add-Content .env ('RECIPIENT_EMAIL=' + $re)"
 ```
 
 ## 11. GitHub Repository und Cloud Build verbinden (Google Cloud Console Web UI)

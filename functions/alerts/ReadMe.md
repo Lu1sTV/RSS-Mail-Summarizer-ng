@@ -2,15 +2,15 @@
 
 Dieses Projekt ist eine Google Cloud Function, die automatisiert E-Mails mit Google Alerts über die Gmail-API ausliest, enthaltene Links extrahiert, bereinigt und in einer Google Firestore Datenbank speichert.
 
-## Aufbau und Funktionen
+## Module
 
-Das Projekt ist modular aufgebaut und umfasst folgende Dateien:
-
-* **Config (`config.py`)**: Alert-Label-Definitionen, URL-Blacklist, Gmail-Scopes, max. Nachrichten pro Abruf (`MAX_RESULTS`) und optionales Max-Alter in Tagen (`MAX_AGE_DAYS`).
-* **Database (`database.py`)**: Firestore-Anbindung – speichert extrahierte URLs in der Collection `website` (inkl. `podcast_generated=False`).
-* **GmailService (`main.py`)**: Gmail-API-Client – liest Mails per Label, extrahiert HTML-Body, verschiebt verarbeitete Mails. Respektiert `MAX_RESULTS` und `MAX_AGE_DAYS` aus der Config.
-* **AlertProcessor (`main.py`)**: Parst HTML mit BeautifulSoup, bereinigt Google-Redirect-URLs, prüft gegen Blacklist und übergibt Links an die Datenbank.
-* **alerts_mvp_endpoint (`main.py`)**: HTTP-Einstiegspunkt – koordiniert den gesamten Pipeline-Ablauf.
+| Modul | Verantwortlichkeit |
+|---|---|
+| `config.py` | Alert-Label-Definitionen, URL-Blacklist, Gmail-Scopes, max. Nachrichten pro Abruf (`MAX_RESULTS`), Max-Alter (`MAX_AGE_DAYS`), Paginierung (`MAX_PAGES`). |
+| `database.py` | Firestore-Anbindung: speichert extrahierte URLs in Collection `website` (inkl. `podcast_generated=False`). |
+| `GmailService` | Gmail-API-Client: liest Mails per Label, extrahiert HTML-Body, verschiebt verarbeitete Mails. Paginierung + Altersfilter aus Config. |
+| `AlertProcessor` | Parst HTML mit BeautifulSoup, bereinigt Google-Redirect-URLs, prueft gegen Blacklist, uebergibt Links an Datenbank. |
+| `alerts_mvp_endpoint` | HTTP-Einstiegspunkt: koordiniert Pipeline, einheitliches JSON-Response-Schema (`status`, `resource`, `details`). |
 
 ## Systemvoraussetzungen (Requirements)
 
@@ -117,6 +117,34 @@ Um die Cloud Function automatisch um 08:00 und 16:00 Uhr deutscher Zeit auszufü
      --oidc-service-account-email="<SERVICE_ACCOUNT_EMAIL>" \
      --location=europe-west3
    ```
+
+## Architektur
+
+```
+Cloud Scheduler (cron)
+        |
+        v
+alerts_mvp_endpoint (HTTP Entry Point)
+        |
+        v
+GmailService.get_messages_by_label()
+        |   Gmail API --> Mails per Label lesen
+        |   Paginierung (MAX_PAGES), Altersfilter (MAX_AGE_DAYS)
+        v
+AlertProcessor.extract_urls(html_body)
+        |   BeautifulSoup --> Links extrahieren
+        |   Google-Redirect-URLs bereinigen
+        |   Blacklist-Pruefung
+        v
+FirestoreDatabase.save_entry(url, source)
+        |   Firestore Collection "website"
+        |   Deduplizierung, podcast_generated=False
+        v
+GmailService.mark_as_read(message_id)
+        |   Gmail API --> Mail als gelesen markieren
+        v
+    JSON Response {status, resource, details}
+```
 
 ## Hinweis
 
