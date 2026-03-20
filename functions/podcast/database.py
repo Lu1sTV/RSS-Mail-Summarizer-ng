@@ -12,7 +12,7 @@ from config import PodcastConfig
 
 # Logger Setup
 logger = logging.getLogger("podcast_generator")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(getattr(logging, os.environ.get("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG))
 
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)

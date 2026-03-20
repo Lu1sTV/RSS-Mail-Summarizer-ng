@@ -45,7 +45,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    export GCS_BUCKET_NAME="dein-podcast-bucket"
    export SENDER_EMAIL="sender@example.com"
    export RECIPIENT_EMAIL="user@example.com"
-   export CREDENTIALS_TOKEN_JSON='{"token":"...","refresh_token":"...","token_uri":"https://oauth2.googleapis.com/token","client_id":"...","client_secret":"...","scopes":["https://www.googleapis.com/auth/gmail.modify"]}'
+   export GMAIL_TOKEN_JSON='{"token":"...","refresh_token":"...","token_uri":"https://oauth2.googleapis.com/token","client_id":"...","client_secret":"...","scopes":["https://www.googleapis.com/auth/gmail.modify"]}'
    ```
 5. Starte den lokalen Server aus dem Hauptverzeichnis:
    ```bash
@@ -73,7 +73,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    gcloud secrets create gcs-bucket-name --replication-policy="automatic"
    gcloud secrets create sender-email --replication-policy="automatic"
    gcloud secrets create recipient-email --replication-policy="automatic"
-   gcloud secrets create credentials-token-json --replication-policy="automatic"
+   gcloud secrets create gmail-token --replication-policy="automatic"
    ```
 4. Lade die Keys und Werte in die erstellten Secrets hoch:
    ```bash
@@ -82,7 +82,7 @@ Zusätzlich wird folgende Authentifizierungsdatei im Ordner `keys/` für lokale 
    echo -n "DEIN_PODCAST_BUCKET" | gcloud secrets versions add gcs-bucket-name --data-file=-
    echo -n "sender@example.com" | gcloud secrets versions add sender-email --data-file=-
    echo -n "user@example.com" | gcloud secrets versions add recipient-email --data-file=-
-   cat keys/token.json | gcloud secrets versions add credentials-token-json --data-file=-
+   cat keys/token.json | gcloud secrets versions add gmail-token --data-file=-
    ```
 5. Erteile dem Dienstkonto der Cloud Function die Berechtigung, die Secrets auszulesen:
    ```bash
@@ -124,7 +124,7 @@ Um die Cloud Function automatisch einmal täglich (z. B. um 06:00 Uhr deutscher 
 
 1. Erteile dem Dienstkonto die Berechtigung, die Cloud Function (Gen 2) aufzurufen:
    ```bash
-   gcloud functions add-invoker-policy-binding podcast-generator \
+   gcloud functions add-invoker-policy-binding podcast-trigger \
      --region=europe-west3 \
      --member="serviceAccount:<SERVICE_ACCOUNT_EMAIL>"
    ```

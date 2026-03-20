@@ -1,16 +1,10 @@
 import os
+import re
 import sys
 import json
 import base64
 import logging
-import traceback
-import requests
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email.mime.multipart import MIMEMultipart
-from email import encoders
-from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional, Tuple
 from urllib.parse import urlparse, parse_qs
 
@@ -28,7 +22,7 @@ from database import FirestoreDatabase
 
 # Logger Setup
 logger = logging.getLogger("podcast_generator")
-logger.setLevel(logging.DEBUG)
+logger.setLevel(getattr(logging, os.environ.get("LOG_LEVEL", "DEBUG").upper(), logging.DEBUG))
 
 if not logger.handlers:
     handler = logging.StreamHandler(sys.stdout)
@@ -60,7 +54,7 @@ class GCPAuthService:
     def get_gmail_service() -> Any:
         """Build Gmail API service from token secret or local token file."""
         scopes = ["https://www.googleapis.com/auth/gmail.modify"]
-        token_json_str: Optional[str] = os.environ.get("CREDENTIALS_TOKEN_JSON")
+        token_json_str: Optional[str] = os.environ.get("GMAIL_TOKEN_JSON")
         creds: Optional[Credentials] = None
 
         if token_json_str:
@@ -68,7 +62,7 @@ class GCPAuthService:
                 creds_info = json.loads(token_json_str)
                 creds = Credentials.from_authorized_user_info(creds_info, scopes)
             except Exception as exc:
-                logger.error(f"Invalid CREDENTIALS_TOKEN_JSON: {exc}")
+                logger.error(f"Invalid GMAIL_TOKEN_JSON: {exc}")
 
         if creds is None:
             local_token_paths = [
@@ -81,7 +75,7 @@ class GCPAuthService:
                     break
 
         if not creds:
-            raise RuntimeError("No Gmail token found. Set CREDENTIALS_TOKEN_JSON or provide keys/token.json.")
+            raise RuntimeError("No Gmail token found. Set GMAIL_TOKEN_JSON or provide keys/token.json.")
 
         if not creds.valid:
             if creds.expired and creds.refresh_token:
@@ -113,24 +107,31 @@ class PodcastAIService:
         return url
 
     def fetch_raw_content(self, urls: List[str]) -> List[str]:
-        """Scrape web pages and summarize YouTube videos."""
+        """Fetch web content via Gemini URL-Grounding and summarize YouTube videos."""
         youtube_urls: List[str] = [u for u in urls if "youtube.com" in u or "youtu.be" in u]
         web_urls: List[str] = [u for u in urls if u not in youtube_urls]
 
         content_collection: List[str] = []
-        headers: Dict[str, str] = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
 
         for url in web_urls:
-            logger.info(f"Fetching web: {url}")
+            logger.info(f"Fetching web (Gemini URL-Grounding): {url}")
             try:
-                res = requests.get(url, headers=headers, timeout=15)
-                res.raise_for_status()
-                soup: BeautifulSoup = BeautifulSoup(res.content, 'html.parser')
-                text: str = ' '.join([p.get_text() for p in soup.find_all(['p', 'article', 'h1', 'h2', 'h3'])])
-                clean_text: str = text.replace('\n', ' ').strip()
-                content_collection.append(f"Quelle: {url}\nInhalt: {clean_text[:15000]}")
+                response = self.client.models.generate_content(
+                    model=PodcastConfig.GEMINI_MODEL,
+                    contents=(
+                        f"Fasse den Inhalt der folgenden Webseite ausfuehrlich zusammen. "
+                        f"Nenne alle wichtigen Fakten, Argumente und Details.\n\nURL: {url}"
+                    ),
+                    config=types.GenerateContentConfig(
+                        tools=[types.Tool(url_context=types.UrlContext())],
+                    ),
+                )
+                text: str = response.text.strip()
+                char_count = len(text)
+                content_collection.append(
+                    f"Quelle: {url}\nInhalt: {text[:PodcastConfig.MAX_CONTENT_CHARS]}"
+                )
+                logger.info(f"  -> {char_count} chars fetched for {url}")
             except Exception as e:
                 logger.error(f"Fetch failed ({url}): {e}")
 
@@ -140,7 +141,7 @@ class PodcastAIService:
                 clean_url: str = self._clean_youtube_url(url)
                 youtube_video = types.Part.from_uri(file_uri=clean_url, mime_type="video/*")
                 response = self.client.models.generate_content(
-                    model="gemini-3.1-flash-lite-preview",
+                    model=PodcastConfig.GEMINI_MODEL,
                     contents=[
                         youtube_video,
                         "Erstelle eine sehr ausfuehrliche, detaillierte Zusammenfassung dieses Videos. "
@@ -148,54 +149,111 @@ class PodcastAIService:
                         "spaeter ein tiefergehender Podcast erstellt werden kann."
                     ]
                 )
-                content_collection.append(f"Quelle (YouTube): {url}\nInhalt: {response.text.strip()}")
+                text: str = response.text.strip()
+                char_count = len(text)
+                content_collection.append(f"Quelle (YouTube): {url}\nInhalt: {text}")
+                logger.info(f"  -> {char_count} chars fetched for {url}")
             except Exception as e:
                 logger.error(f"YT fetch failed ({url}): {e}")
 
         return content_collection
 
+    @staticmethod
+    def _strip_urls(text: str) -> str:
+        """Remove leftover URLs from script text."""
+        return re.sub(r"https?://\S+", "", text).strip()
+
+    @staticmethod
+    def _estimate_duration_min(script: List[str]) -> float:
+        """Estimate podcast duration in minutes based on word count."""
+        total_words = sum(len(passage.split()) for passage in script)
+        return total_words / PodcastConfig.TTS_WORDS_PER_MINUTE
+
     def generate_script(self, content_collection: List[str]) -> List[str]:
-        """Generate a two-voice script via Gemini (returns JSON list)."""
+        """Generate a two-voice script via Gemini (returns JSON list) with length validation and retry."""
         if not content_collection:
             logger.warning("No content for script generation.")
             return []
 
-        logger.info("Generating script via Gemini...")
         content_text: str = "\n\n---\n\n".join(content_collection)
 
         system_instruction: str = (
             "Du erstellst ein langes, detailliertes deutsches Podcast-Skript fuer zwei Moderatoren (Sprecher 1 und Sprecher 2) "
-            "basierend auf den uebergebenen Rohtexten. Ziel ist eine Podcast-Laenge von etwa 15 bis 20 Minuten. "
-            "Gehe tief in die Themen ein, lass die Moderatoren die Inhalte diskutieren, Vor- und Nachteile abwaegen und Details aus den Texten erklaeren.\n\n"
+            f"basierend auf den uebergebenen Rohtexten. Ziel ist eine Podcast-Laenge von mindestens {PodcastConfig.MIN_PODCAST_MINUTES} "
+            f"bis {PodcastConfig.MAX_PODCAST_MINUTES} Minuten. "
+            "Erstelle mindestens 50 Passagen. Behandle jede Quelle ausfuehrlich in 2-3 Passagen. "
+            "Gehe tief in die Themen ein, lass die Moderatoren die Inhalte diskutieren, Vor- und Nachteile abwaegen und Details aus den Texten erklaeren. "
+            "Kuerze NICHT ab.\n\n"
             "WICHTIG: Gib ausschliesslich ein valides JSON-Array zurueck. Jedes Element im Array muss ein reiner String sein, der den gesprochenen Text enthaelt.\n"
-            "Der Text muss abwechselnd von Sprecher 1 und Sprecher 2 gelesen werden. Keine Rollennamen oder Praefixe (wie 'Sprecher 1:') im String."
+            "Der Text muss abwechselnd von Sprecher 1 und Sprecher 2 gelesen werden. Keine Rollennamen oder Praefixe (wie 'Sprecher 1:') im String. "
+            "Keine URLs im Text."
         )
 
-        try:
-            response = self.client.models.generate_content(
-                model="gemini-3.1-flash-lite-preview",
-                contents=f"Nachrichten-Rohtexte:\n{content_text}",
-                config=types.GenerateContentConfig(
-                    system_instruction=system_instruction,
-                    temperature=0.7,
-                    response_mime_type="application/json",
-                )
-            )
-            script_text: str = response.text.strip()
-            return json.loads(script_text)
+        script: List[str] = []
+        for attempt in range(1, PodcastConfig.MAX_SCRIPT_RETRIES + 1):
+            logger.info(f"Generating script via Gemini (attempt {attempt}/{PodcastConfig.MAX_SCRIPT_RETRIES})...")
+            try:
+                extra_hint = ""
+                if attempt > 1:
+                    extra_hint = (
+                        f"\n\nWICHTIG: Der vorherige Versuch war zu kurz "
+                        f"(ca. {self._estimate_duration_min(script):.1f} min). "
+                        f"Erstelle mindestens {PodcastConfig.MIN_PODCAST_MINUTES} Minuten Inhalt! "
+                        "Mehr Passagen, mehr Details, NICHT abkuerzen."
+                    )
 
-        except json.JSONDecodeError as e:
-            logger.error(f"Gemini returned invalid JSON: {e}")
-            raise RuntimeError(f"Invalid JSON from Gemini: {e}")
-        except Exception as e:
-            logger.error(f"Script generation failed: {e}")
-            raise
+                response = self.client.models.generate_content(
+                    model=PodcastConfig.GEMINI_MODEL,
+                    contents=f"Nachrichten-Rohtexte:\n{content_text}{extra_hint}",
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=PodcastConfig.SCRIPT_TEMPERATURE,
+                        max_output_tokens=PodcastConfig.MAX_OUTPUT_TOKENS,
+                        response_mime_type="application/json",
+                    )
+                )
+                script = json.loads(response.text.strip())
+
+                # Strip URLs from each passage
+                script = [self._strip_urls(p) for p in script if self._strip_urls(p)]
+
+                estimated_min = self._estimate_duration_min(script)
+                total_words = sum(len(p.split()) for p in script)
+                logger.info(
+                    f"Script: {len(script)} passages, {total_words} words, "
+                    f"~{estimated_min:.1f} min estimated duration."
+                )
+
+                if estimated_min >= PodcastConfig.MIN_PODCAST_MINUTES:
+                    if estimated_min > PodcastConfig.MAX_PODCAST_MINUTES:
+                        logger.warning(
+                            f"Script exceeds target: ~{estimated_min:.1f} min "
+                            f"(max {PodcastConfig.MAX_PODCAST_MINUTES} min)."
+                        )
+                    return script
+
+                logger.warning(
+                    f"Script too short: ~{estimated_min:.1f} min "
+                    f"(min {PodcastConfig.MIN_PODCAST_MINUTES} min). Retrying..."
+                )
+
+            except json.JSONDecodeError as e:
+                logger.error(f"Gemini returned invalid JSON: {e}")
+                if attempt == PodcastConfig.MAX_SCRIPT_RETRIES:
+                    raise RuntimeError(f"Invalid JSON from Gemini after {attempt} attempts: {e}")
+            except Exception as e:
+                logger.error(f"Script generation failed: {e}")
+                raise
+
+        # Return the best we got after all retries
+        logger.warning("Max retries reached – using last generated script.")
+        return script
 
 
 class AudioService:
     """TTS synthesis and GCS upload."""
 
-    VOICES: List[str] = ["de-DE-Journey-D", "de-DE-Journey-F"]
+    VOICES: List[str] = [PodcastConfig.TTS_HOST_VOICE, PodcastConfig.TTS_GUEST_VOICE]
 
     def __init__(self) -> None:
         if not PodcastConfig.GCS_BUCKET_NAME:
@@ -212,7 +270,7 @@ class AudioService:
         tts_client = texttospeech.TextToSpeechClient(credentials=creds)
         audio_config = texttospeech.AudioConfig(
             audio_encoding=texttospeech.AudioEncoding.MP3,
-            sample_rate_hertz=44100
+            sample_rate_hertz=PodcastConfig.TTS_SAMPLE_RATE
         )
 
         combined_audio: bytes = b""
@@ -220,7 +278,7 @@ class AudioService:
             logger.debug(f"TTS passage {index + 1}/{len(script)}...")
             synthesis_input = texttospeech.SynthesisInput(text=text)
             voice_params = texttospeech.VoiceSelectionParams(
-                language_code="de-DE",
+                language_code=PodcastConfig.TTS_LANGUAGE,
                 name=self.VOICES[index % 2]
             )
             response = tts_client.synthesize_speech(
@@ -242,40 +300,48 @@ class AudioService:
         logger.info(f"Uploaded: gs://{PodcastConfig.GCS_BUCKET_NAME}/{filename}")
         return filename
 
-    def download_from_bucket(self, filename: str) -> bytes:
-        """Download the generated MP3 bytes from GCS bucket."""
+    def generate_signed_url(self, filename: str) -> str:
+        """Generate a V4 signed URL for the uploaded MP3."""
         creds: service_account.Credentials = GCPAuthService.get_credentials()
         storage_client = storage.Client(credentials=creds, project=creds.project_id)
         bucket = storage_client.bucket(PodcastConfig.GCS_BUCKET_NAME)
         blob = bucket.blob(filename)
-        return blob.download_as_bytes()
+        url: str = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(days=PodcastConfig.SIGNED_URL_EXPIRY_DAYS),
+            method="GET",
+        )
+        logger.info(f"Signed URL generated (expires in {PodcastConfig.SIGNED_URL_EXPIRY_DAYS}d): {filename}")
+        return url
 
 
 class PodcastMailService:
-    """Sends generated podcast MP3 via Gmail API."""
+    """Sends podcast download link via Gmail API."""
 
     def __init__(self) -> None:
         if not PodcastConfig.SENDER_EMAIL or not PodcastConfig.RECIPIENT_EMAIL:
             raise RuntimeError("SENDER_EMAIL and RECIPIENT_EMAIL environment variables are required.")
 
-    def send_podcast_mail(self, podcast_filename: str, podcast_bytes: bytes) -> None:
-        """Send podcast email with MP3 attachment."""
-        msg = MIMEMultipart()
+    def send_podcast_mail(self, podcast_filename: str, signed_url: str) -> None:
+        """Send podcast email with a signed download link."""
+        from email.mime.text import MIMEText
+
+        html_body = (
+            f"<h2>Neuer Podcast vom {datetime.now().strftime('%d.%m.%Y')}</h2>"
+            f"<p>Datei: {podcast_filename}</p>"
+            f'<p><a href="{signed_url}">Podcast herunterladen</a></p>'
+            f"<p><small>Der Link ist {PodcastConfig.SIGNED_URL_EXPIRY_DAYS} Tage gueltig.</small></p>"
+        )
+
+        msg = MIMEText(html_body, "html", "utf-8")
         msg["From"] = PodcastConfig.SENDER_EMAIL
         msg["To"] = PodcastConfig.RECIPIENT_EMAIL
-        msg["Subject"] = f"New Podcast {datetime.now().strftime('%Y-%m-%d')}"
-        msg.attach(MIMEText("Hier ist der heutige Podcast.", "plain", "utf-8"))
-
-        part = MIMEBase("audio", "mpeg")
-        part.set_payload(podcast_bytes)
-        encoders.encode_base64(part)
-        part.add_header("Content-Disposition", f"attachment; filename={podcast_filename}")
-        msg.attach(part)
+        msg["Subject"] = f"Neuer Podcast {datetime.now().strftime('%Y-%m-%d')}"
 
         gmail_service = GCPAuthService.get_gmail_service()
         raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
         gmail_service.users().messages().send(userId="me", body={"raw": raw_message}).execute()
-        logger.info(f"Podcast mail sent to {PodcastConfig.RECIPIENT_EMAIL} with attachment {podcast_filename}.")
+        logger.info(f"Podcast mail sent to {PodcastConfig.RECIPIENT_EMAIL} with signed URL for {podcast_filename}.")
 
 
 @functions_framework.http
@@ -292,7 +358,7 @@ def podcast_trigger(request: Any) -> Tuple[str, int]:
 
         if not candidates:
             logger.info("No new entries found.")
-            return json.dumps({"status": "ok", "message": "No new entries found."}, indent=2), 200
+            return json.dumps({"status": "ok", "resource": "podcast", "details": {"message": "No new entries found."}}, indent=2), 200
 
         doc_refs: List[Any] = [ref for ref, _ in candidates]
         entries: List[Dict[str, Any]] = [data for _, data in candidates]
@@ -306,17 +372,20 @@ def podcast_trigger(request: Any) -> Tuple[str, int]:
         if not filename:
             raise RuntimeError("Podcast generation did not produce a file.")
 
-        podcast_bytes = audio_service.download_from_bucket(filename)
-        mail_service.send_podcast_mail(filename, podcast_bytes)
+        signed_url: str = audio_service.generate_signed_url(filename)
+        mail_service.send_podcast_mail(filename, signed_url)
 
         db.mark_as_podcast_generated(doc_refs)
 
+        estimated_min = PodcastAIService._estimate_duration_min(script)
         response_data: Dict[str, Any] = {
             "status": "success",
-            "file": filename,
+            "resource": "podcast",
             "details": {
+                "file": filename,
                 "entries_processed": len(doc_refs),
                 "script_passages": len(script),
+                "estimated_duration_min": round(estimated_min, 1),
                 "mail_sent_to": PodcastConfig.RECIPIENT_EMAIL,
             }
         }
@@ -325,10 +394,10 @@ def podcast_trigger(request: Any) -> Tuple[str, int]:
 
     except RuntimeError as re:
         logger.critical(f"Init error: {re}")
-        return json.dumps({"error": "Initialization failed", "details": str(re)}, indent=2), 500
+        return json.dumps({"status": "error", "resource": "podcast", "details": {"message": str(re)}}, indent=2), 500
     except Exception as e:
-        logger.critical(f"Server error: {e}\n{traceback.format_exc()}")
-        return json.dumps({"error": "Internal Server Error", "details": str(e), "traceback": traceback.format_exc()}, indent=2), 500
+        logger.critical(f"Server error: {e}", exc_info=True)
+        return json.dumps({"status": "error", "resource": "podcast", "details": {"message": "Internal Server Error"}}, indent=2), 500
 
 
 if __name__ == "__main__":
